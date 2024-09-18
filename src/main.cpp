@@ -1283,7 +1283,7 @@ void getMac()
 }
 
 void setup() {
-  Project = "TempMon";
+  Project = "AIRMASS2.5";
   FirmwareVer = "0.1";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
