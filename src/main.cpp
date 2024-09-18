@@ -361,8 +361,8 @@ void _initBME280()
 
   delay(200);
 
-  //Wire.begin(21, 22);
-  Wire.begin();
+  Wire.begin(21, 22);
+  //Wire.begin();
 
   while (!bme.begin())
   {
@@ -1287,7 +1287,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.4";
+  FirmwareVer = "0.5";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
