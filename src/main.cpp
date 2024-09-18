@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include <TaskScheduler.h>
 
 #include <WiFiManager.h>
 #include <WiFiClientSecure.h>
@@ -45,7 +46,14 @@
 
 #include "http_ota.h"
 struct tm tmstruct;
+#define _TASK_SLEEP_ON_IDLE_RUN
+#define _TASK_PRIORITY
+#define _TASK_WDT_IDS
+#define _TASK_TIMECRITICAL
 //struct tm timeinfo;
+
+Scheduler runner;
+
 
 boolean readPMSdata(Stream *s);
 void composeJson();
@@ -55,6 +63,22 @@ void sendAttribute();
 void processAtt(char jsonAtt[]);
 void reconnectMqtt();
 void heartBeat();
+
+void t1CallGetProbe();
+void t2CallShowEnv();
+void t3CallSendData();
+void t4CallPrintPMS7003();
+void t7showTime();
+
+// Variables to keep track of the last execution time for each task
+Task t1(10000, TASK_FOREVER, &t1CallGetProbe);  //adding task to the chain on creation
+Task t2(10000, TASK_FOREVER, &t2CallShowEnv);
+Task t3(300000, TASK_FOREVER, &t3CallSendData);
+Task t4(60000, TASK_FOREVER, &t4CallPrintPMS7003);  //adding task to the chain on creation
+Task t5(60000, TASK_FOREVER, &heartBeat);
+Task t6(60000, TASK_FOREVER, &OTA_git_CALL);
+Task t7(500, TASK_FOREVER, &t7showTime);
+
 
 #define TFT_BLACK       0x0000      /*   0,   0,   0 */
 #define TFT_NAVY        0x000F      /*   0,   0, 128 */
@@ -1292,7 +1316,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "1.2";
+  FirmwareVer = "1.3";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1332,6 +1356,35 @@ void setup() {
   delay(200);
   
   readEEPROM();
+  runner.init();
+  //  Serial.println("Initialized scheduler");
+
+  runner.addTask(t1);
+  //  Serial.println("added t1");
+  runner.addTask(t2);
+  //  Serial.println("added t2");
+  runner.addTask(t3);
+  //  Serial.println("added t3");
+  runner.addTask(t4);
+  //  Serial.println("added t4");
+  runner.addTask(t5);
+  runner.addTask(t6);
+  runner.addTask(t7);
+  delay(2000);
+
+  t1.enable();
+  //  Serial.println("Enabled t1");
+  t2.enable();
+  //  Serial.println("Enabled t2");
+  t3.enable();
+  //  Serial.println("Enabled t3");
+  t4.enable();
+  //  Serial.println("Enabled t2");
+  t6.enable();
+  t5.enable();
+  t7.enable();
+  //  t1CallgetProbe();
+  //  t2CallshowEnv() ;
   for (int i = 0; i < 1000; i++);
   tft.fillScreen(TFT_BLACK);            // Clear screen
 
@@ -1348,10 +1401,9 @@ void setup() {
   t7showTime();
 }
 
-// Variables to keep track of the last execution time for each task
-
-
 void loop() {
+  runner.execute();
+  /*
   const unsigned long time2send = periodSendTelemetry * 1000;
   // Task t7: Call t7showTime every 0.5 seconds (500 ms)
 
@@ -1381,14 +1433,5 @@ void loop() {
     t7showTime();
     //Serial.println("debugt7showTime");
    }
-
-/**  */
- 
-/***/
-  // Handle periodic tasks like heartbeat and OTA setup
-  /*
-  if (millis() % 36000 == 0) {
-    //heartBeat();
-    Serial.print("FreeMem:"); Serial.println(ESP.getFreeHeap());
-  }*/
+ */
 }
