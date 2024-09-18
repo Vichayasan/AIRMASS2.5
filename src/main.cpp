@@ -18,7 +18,7 @@
 #include <HardwareSerial.h>
 //#include <Adafruit_BME280.h>
 //#include <BME280I2C.h>
-#include <Adafruit_Sensor.h>
+//#include <Adafruit_Sensor.h>
 #include <SparkFunBME280.h>
 
 #include <TFT_eSPI.h>
@@ -1292,7 +1292,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "1.0";
+  FirmwareVer = "1.1";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1356,40 +1356,31 @@ void loop() {
   // Task t7: Call t7showTime every 0.5 seconds (500 ms)
 
   if (millis() % time2send == 0) {
+    heartBeat();
     OTA_git_CALL();
     Serial.print("periodSendTelemetry:");
     Serial.println(periodSendTelemetry);
     t3CallSendData();
     t4CallPrintPMS7003();
-  }
     
-    if (millis() % 10000 == 0) {
+    //Serial.println("debugt1CallGetProbe");
+  }
+
+  
+
+  if (millis() % 60000 == 0) {
     heartBeat();
     t1CallGetProbe();
-    Serial.println("debugt1CallGetProbe");
     t2CallShowEnv();
     Serial.println("debugt2CallShowEnv");
-    }
+  }
 
 
   // Task t2: Call t2CallShowEnv every 10 seconds (10000 ms)
-  
-
    if (millis() % 500 == 0) {
-    
     t7showTime();
     //Serial.println("debugt7showTime");
-    status = WiFi.status();
-    if (status == WL_CONNECTED) {
-      if (!client.connected()) {
-        Serial.println("Client disconnected, attempting to reconnect...");
-        reconnectMqtt();
-      }
-      client.loop(); // Process MQTT messages
-    } else {
-      Serial.println("WiFi disconnected");
-    }
-    }
+   }
 
 /**  */
  
