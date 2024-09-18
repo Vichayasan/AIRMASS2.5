@@ -76,7 +76,7 @@ Task t2(30000, TASK_FOREVER, &t2CallShowEnv);
 Task t3(10000, TASK_FOREVER, &t3CallSendData);
 Task t4(60000, TASK_FOREVER, &t4CallPrintPMS7003);  //adding task to the chain on creation
 Task t5(120000, TASK_FOREVER, &heartBeat);
-Task t6(60000, TASK_FOREVER, &OTA_git_CALL);
+Task t6(300000, TASK_FOREVER, &OTA_git_CALL);
 Task t7(500, TASK_FOREVER, &t7showTime);
 Task t8(300000, TASK_FOREVER, &composeJson);
 
@@ -143,8 +143,8 @@ int PORT = 1883;
 #define title1 "PM2.5" // Text that will be printed on screen in any font
 #define title2 "PM1"
 #define title3 "PM10"
-#define title4 "CO2"
-#define title5 "VOC"
+#define title4 "NaN"
+#define title5 "NaN"
 #define title6 "Update"
 #define title7 "ug/m3"
 #define title8 "RH"
@@ -861,7 +861,7 @@ void drawPM1(int num, int x, int y)
   //  stringPM1.deleteSprite();
 }
 //
-/*
+
 void drawCO2(int num, int x, int y)
 {
   stringCO2.createSprite(60, 20);
@@ -872,7 +872,7 @@ void drawCO2(int num, int x, int y)
   stringCO2.drawNumber(num, 0, 3);
   stringCO2.pushSprite(x, y);
   //  stringCO2.deleteSprite();
-}*/
+}
 //
 
 void drawPM10(int num, int x, int y)
@@ -1031,7 +1031,7 @@ void heartBeat()
   Serial.println("Heartbeat");
   // SerialBT.println("Heartbeat");
 }
-/*
+
 void drawVOC(int num, int x, int y)
 {
   stringVOC.createSprite(60, 20);
@@ -1043,7 +1043,7 @@ void drawVOC(int num, int x, int y)
   stringVOC.pushSprite(x, y);
   stringVOC.deleteSprite();
 }
-*/
+
 void t2CallShowEnv() {
   //  Serial.print(F("ready2display:"));
   //  Serial.println(ready2display);
@@ -1068,7 +1068,7 @@ void t2CallShowEnv() {
     // ################################################################ end test
 
 
-    drawPM2_5(data.pm25_env + (pm25Offset / 100), mid, 45);
+    drawPM2_5(data.pm25_env, mid, 45);
 
     tft.setTextSize(1);
     tft.setFreeFont(CF_OL32);                 // Select the font
@@ -1079,24 +1079,24 @@ void t2CallShowEnv() {
 
     tft.setFreeFont(FSB9);   // Select Free Serif 9 point font, could use:
 
-    drawPM1(data.pm01_env + (pm01Offset / 100), 6, 195);
+    drawPM1(data.pm01_env, 6, 195);
     tft.drawString(title2, 40, 235, GFXFF); // Print the test text in the custom font
 
-    drawPM10(data.pm100_env + (pm10Offset / 100), 55, 195);
+    drawPM10(data.pm100_env, 55, 195);
     tft.drawString(title3, 100, 235, GFXFF); // Print the test text in the custom font
 
-    //  drawCO2(sgp.eCO2 + (CO2Offset / 100), 115, 195);
-    //  tft.drawString(title4, 150, 235, GFXFF); // Print the test text in the custom font
+    drawCO2(0, 115, 195);
+    tft.drawString(title4, 150, 235, GFXFF); // Print the test text in the custom font
 
-    //  drawVOC(sgp.TVOC + (VOCOffset / 100), 170, 195);
-    //  tft.drawString(title5, 210, 235, GFXFF); // Print the test text in the custom font
+    drawVOC(0, 170, 195);
+    tft.drawString(title5, 210, 235, GFXFF); // Print the test text in the custom font
 
     tft.drawString(title8, 250, 215, GFXFF); // Print the test text in the custom font
-    drawH(hum + (HumOffset1 / 100), 255, 195);
+    drawH(hum, 255, 195);
     tft.drawString("%", 312, 215, GFXFF);
 
     tft.drawString(title9, 250, 235, GFXFF); // Print the test text in the custom font
-    drawT(temp + (TempOffset / 100), 255, 215);
+    drawT(temp, 255, 215);
     tft.drawString("C", 312, 235, GFXFF);
 
     //Clear Stage
@@ -1104,20 +1104,20 @@ void t2CallShowEnv() {
     ind.createSprite(320, 10);
     ind.fillSprite(TFT_BLACK);
 
-    if ((data.pm25_env + (pm25Offset / 100) >= 0) && (data.pm25_env + (pm25Offset / 100) <= 15.4)) {
+    if ((data.pm25_env >= 0) && (data.pm25_env <= 15.4)) {
       tft.setWindow(0, 25, 55, 55);
       tft.pushImage(tft.width() - lv1Width - 6, 45, lv1Width, lv1Height, lv1);
       ind.fillTriangle(0, 0, 5, 5, 10, 0, FILLCOLOR1);
-    } else if ((data.pm25_env + (pm25Offset / 100) >= 15.5) && (data.pm25_env + (pm25Offset / 100) <= 40.4)  ) {
+    } else if ((data.pm25_env >= 15.5) && (data.pm25_env <= 40.4)  ) {
       tft.pushImage(tft.width() - lv2Width - 6, 45, lv2Width, lv2Height, lv2);
       ind.fillTriangle(55, 0, 60, 5, 65, 0, FILLCOLOR1);
-    } else  if ((data.pm25_env + (pm25Offset / 100) >= 40.5) && (data.pm25_env + (pm25Offset / 100) <= 65.4)  ) {
+    } else  if ((data.pm25_env >= 40.5) && (data.pm25_env <= 65.4)  ) {
       tft.pushImage(tft.width() - lv3Width - 6, 45, lv3Width, lv3Height, lv3);
       ind.fillTriangle(105, 0, 110, 5, 115, 0, FILLCOLOR1);
-    } else  if ((data.pm25_env + (pm25Offset / 100) >= 65.5) && (data.pm25_env + (pm25Offset / 100) <= 150.4)  ) {
+    } else  if ((data.pm25_env >= 65.5) && (data.pm25_env <= 150.4)  ) {
       tft.pushImage(tft.width() - lv4Width - 6, 45, lv4Width, lv4Height, lv4);
       ind.fillTriangle(155, 0, 160, 5, 165, 0, FILLCOLOR1);
-    } else  if ((data.pm25_env + (pm25Offset / 100) >= 150.5) && (data.pm25_env + (pm25Offset / 100) <= 250.4)  ) {
+    } else  if ((data.pm25_env >= 150.5) && (data.pm25_env <= 250.4)  ) {
       tft.pushImage(tft.width() - lv5Width - 6, 45, lv5Width, lv5Height, lv5);
       ind.fillTriangle(210, 0, 215, 5, 220, 0, FILLCOLOR1);
     } else {
@@ -1177,40 +1177,6 @@ void t7showTime() {
 
 
 }
-
-/*
-void t7showTime() {
-
-
-  topNumber.createSprite(200, 40);
-  //  stringPM1.fillSprite(TFT_GREEN);
-  topNumber.setFreeFont(FS9);
-  topNumber.setTextColor(TFT_WHITE);
-  topNumber.setTextSize(1);           // Font size scaling is x1
-
-
-  unsigned long NowTime = _epoch + ((millis() - time_s) / 1000) + (7 * 3600);
-  String timeS = "";
-
-  if (connectWifi == false) {
-    timeS = a0(day(NowTime)) + "/" + a0(month(NowTime)) + "/" + String(year(NowTime)) + "  [" + a0(hour(NowTime)) + ":" + a0(minute(NowTime)) + "]";
-
-  } else {
-    if (!getLocalTime(&timeinfo)) {
-      Serial.println("Failed to obtain time");
-      //      ESP.restart();
-      return;
-    }
-  }
-
-  topNumber.drawString(timeS, 5, 10, GFXFF);
-
-  topNumber.pushSprite(5, 5);
-  topNumber.deleteSprite();
-
-
-}
-*/
 
 boolean readPMSdata(Stream *s) {
   Serial.println("readPMSdata");
@@ -1314,7 +1280,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "1.5";
+  FirmwareVer = "1.6";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
