@@ -16,9 +16,10 @@
 //#include <ModbusMaster.h>
 //#include "REG_CONFIG.h"
 #include <HardwareSerial.h>
-#include <Adafruit_BME280.h>
+//#include <Adafruit_BME280.h>
 //#include <BME280I2C.h>
-#include <Adafruit_BME280.h>
+#include <Adafruit_Sensor.h>
+#include <SparkFunBME280.h>
 
 #include <TFT_eSPI.h>
 #include <SPI.h>
@@ -92,7 +93,7 @@ unsigned long ms;
 HardwareSerial hwSerial(2);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 //Adafruit_SGP30 sgp;
-Adafruit_BME280 bme;
+BME280 bme;
 
 uint32_t getAbsoluteHumidity(float temperature, float humidity) {
   // approximation formula from Sensirion SGP30 Driver Integration chapter 3.15
@@ -364,9 +365,10 @@ void _initBME280()
   delay(200);
 
   //Wire.begin(21, 22);
-  //Wire.begin();
+  Wire.begin();
+  bme.setI2CAddress(0x76);
 
-  while (!bme.begin())
+  while (!bme.beginI2C())
   {
     bmeStatus = "Could not find BME280 sensor!";
     Serial.println(bmeStatus);
@@ -400,15 +402,15 @@ void _initBME280()
 void printBME280Data()
 {
   Serial.println("DebugprintStartBME280Data");
-  _initBME280();
+  //_initBME280();
   //  BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
   //  BME280::PresUnit presUnit(BME280::PresUnit_Pa);
   //  bme.read(pres, temp, hum, tempUnit, presUnit);
 
-  temp = bme.readTemperature() + (TempOffset);  //compensate
+  temp = bme.readTempC() + (TempOffset);  //compensate
 
-  hum = bme.readHumidity() + (HumOffset1);
-  pres = bme.readPressure();
+  hum = bme.readFloatHumidity() + (HumOffset1);
+  pres = bme.readFloatPressure();
   Serial.println("DebugprintEndBME280Data");
 }
 
@@ -1290,7 +1292,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.9";
+  FirmwareVer = "1.0";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1376,7 +1378,7 @@ void loop() {
    if (millis() % 500 == 0) {
     
     t7showTime();
-    Serial.println("debugt7showTime");
+    //Serial.println("debugt7showTime");
     status = WiFi.status();
     if (status == WL_CONNECTED) {
       if (!client.connected()) {
