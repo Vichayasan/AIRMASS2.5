@@ -72,7 +72,7 @@ void t7showTime();
 
 // Variables to keep track of the last execution time for each task
 Task t1(10000, TASK_FOREVER, &t1CallGetProbe);  //adding task to the chain on creation
-Task t2(10000, TASK_FOREVER, &t2CallShowEnv);
+Task t2(30000, TASK_FOREVER, &t2CallShowEnv);
 Task t3(10000, TASK_FOREVER, &t3CallSendData);
 Task t4(60000, TASK_FOREVER, &t4CallPrintPMS7003);  //adding task to the chain on creation
 Task t5(120000, TASK_FOREVER, &heartBeat);
@@ -1314,7 +1314,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "1.4";
+  FirmwareVer = "1.5";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
