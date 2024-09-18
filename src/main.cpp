@@ -1288,7 +1288,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.7";
+  FirmwareVer = "0.8";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1350,20 +1350,16 @@ void setup() {
 void loop() {
   const unsigned long time2send = periodSendTelemetry * 1000;
   // Task t7: Call t7showTime every 0.5 seconds (500 ms)
-  if (millis() % 500 == 0) {
-    //heartBeat();
-    t7showTime();
-    Serial.println("debugt7showTime");
-    }
 
-    if (millis() % 10000 == 0) {
-      t1CallGetProbe();
-    Serial.println("debugt1CallGetProbe");
-    t2CallShowEnv();
-    Serial.println("debugt2CallShowEnv");
-    }
+  if (millis() % time2send == 0) {
+    OTA_git_CALL();
+    Serial.print("periodSendTelemetry:");
+    Serial.println(periodSendTelemetry);
+    t3CallSendData();
+    t4CallPrintPMS7003();
+  }
 
-    if (millis() % 30000 == 0) {
+  if (millis() % 30000 == 0) {
     heartBeat();
     status = WiFi.status();
     if (status == WL_CONNECTED) {
@@ -1377,15 +1373,22 @@ void loop() {
     }
     }
 
+    if (millis() % 10000 == 0) {
+      t1CallGetProbe();
+    Serial.println("debugt1CallGetProbe");
+    t2CallShowEnv();
+    Serial.println("debugt2CallShowEnv");
+    }
+
 
   // Task t2: Call t2CallShowEnv every 10 seconds (10000 ms)
-  if (millis() % time2send == 0) {
-    OTA_git_CALL();
-    Serial.print("periodSendTelemetry:");
-    Serial.println(periodSendTelemetry);
-    t3CallSendData();
-    t4CallPrintPMS7003();
-  }
+  
+
+   if (millis() % 500 == 0) {
+    //heartBeat();
+    t7showTime();
+    Serial.println("debugt7showTime");
+    }
 /**  */
  
 /***/
