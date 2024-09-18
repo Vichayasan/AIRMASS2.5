@@ -17,7 +17,8 @@
 //#include "REG_CONFIG.h"
 #include <HardwareSerial.h>
 #include <Adafruit_BME280.h>
-#include <BME280I2C.h>
+//#include <BME280I2C.h>
+#include <Adafruit_BME280.h>
 
 #include <TFT_eSPI.h>
 #include <SPI.h>
@@ -91,7 +92,7 @@ unsigned long ms;
 HardwareSerial hwSerial(2);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 //Adafruit_SGP30 sgp;
-BME280I2C bme;
+Adafruit_BME280 bme;
 
 uint32_t getAbsoluteHumidity(float temperature, float humidity) {
   // approximation formula from Sensirion SGP30 Driver Integration chapter 3.15
@@ -400,13 +401,14 @@ void printBME280Data()
 {
   Serial.println("DebugprintStartBME280Data");
   _initBME280();
-  BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
-  BME280::PresUnit presUnit(BME280::PresUnit_Pa);
-  bme.read(pres, temp, hum, tempUnit, presUnit);
+  //  BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+  //  BME280::PresUnit presUnit(BME280::PresUnit_Pa);
+  //  bme.read(pres, temp, hum, tempUnit, presUnit);
 
-  temp = temp + (TempOffset);  //compensate
+  temp = bme.readTemperature() + (TempOffset);  //compensate
 
-  hum = hum + (HumOffset1);
+  hum = bme.readHumidity() + (HumOffset1);
+  pres = bme.readPressure();
   Serial.println("DebugprintEndBME280Data");
 }
 
@@ -1288,7 +1290,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.8";
+  FirmwareVer = "0.9";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1358,9 +1360,23 @@ void loop() {
     t3CallSendData();
     t4CallPrintPMS7003();
   }
-
-  if (millis() % 30000 == 0) {
+    
+    if (millis() % 10000 == 0) {
     heartBeat();
+    t1CallGetProbe();
+    Serial.println("debugt1CallGetProbe");
+    t2CallShowEnv();
+    Serial.println("debugt2CallShowEnv");
+    }
+
+
+  // Task t2: Call t2CallShowEnv every 10 seconds (10000 ms)
+  
+
+   if (millis() % 500 == 0) {
+    
+    t7showTime();
+    Serial.println("debugt7showTime");
     status = WiFi.status();
     if (status == WL_CONNECTED) {
       if (!client.connected()) {
@@ -1373,22 +1389,6 @@ void loop() {
     }
     }
 
-    if (millis() % 10000 == 0) {
-      t1CallGetProbe();
-    Serial.println("debugt1CallGetProbe");
-    t2CallShowEnv();
-    Serial.println("debugt2CallShowEnv");
-    }
-
-
-  // Task t2: Call t2CallShowEnv every 10 seconds (10000 ms)
-  
-
-   if (millis() % 500 == 0) {
-    //heartBeat();
-    t7showTime();
-    Serial.println("debugt7showTime");
-    }
 /**  */
  
 /***/
