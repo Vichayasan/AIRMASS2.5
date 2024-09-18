@@ -73,11 +73,12 @@ void t7showTime();
 // Variables to keep track of the last execution time for each task
 Task t1(10000, TASK_FOREVER, &t1CallGetProbe);  //adding task to the chain on creation
 Task t2(10000, TASK_FOREVER, &t2CallShowEnv);
-Task t3(300000, TASK_FOREVER, &t3CallSendData);
+Task t3(10000, TASK_FOREVER, &t3CallSendData);
 Task t4(60000, TASK_FOREVER, &t4CallPrintPMS7003);  //adding task to the chain on creation
-Task t5(60000, TASK_FOREVER, &heartBeat);
+Task t5(120000, TASK_FOREVER, &heartBeat);
 Task t6(60000, TASK_FOREVER, &OTA_git_CALL);
 Task t7(500, TASK_FOREVER, &t7showTime);
+Task t8(300000, TASK_FOREVER, &composeJson);
 
 
 #define TFT_BLACK       0x0000      /*   0,   0,   0 */
@@ -891,9 +892,6 @@ void t3CallSendData() {
   digitalWrite(12, HIGH);
   delay(2000);
   digitalWrite(12, LOW);
-  composeJson();
-  
-  
 
   tft.setTextColor(0xFFFF);
   int mapX = 315;
@@ -912,11 +910,6 @@ void t3CallSendData() {
     tft.pushImage(240, 0, wifilogoWidth, wifilogoHeight, wifilogo);
     
   } else if (WiFi.status() == WL_CONNECTED) {
-    if ( !client.connected() )
-    {
-      reconnectMqtt();
-    }
-    client.loop();
     int rssi = map(WiFi.RSSI(), -90, -50, 25, 100);
     if (rssi > 100) rssi = 100;
     if (rssi < 0) rssi = 0;
@@ -928,6 +921,11 @@ void t3CallSendData() {
     tft.drawString("W", 265, 27);
     //client.setInsecure();
     Serial.print(" deviceToken.c_str()"); Serial.println(deviceToken.c_str());
+     if ( !client.connected() )
+    {
+      reconnectMqtt();
+    }
+    client.loop();
   }
   Serial.println("Endt3CallSendData()");
 
@@ -1316,7 +1314,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "1.3";
+  FirmwareVer = "1.4";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1370,6 +1368,7 @@ void setup() {
   runner.addTask(t5);
   runner.addTask(t6);
   runner.addTask(t7);
+  runner.addTask(t8);
   delay(2000);
 
   t1.enable();
@@ -1383,6 +1382,7 @@ void setup() {
   t6.enable();
   t5.enable();
   t7.enable();
+  t8.enable();
   //  t1CallgetProbe();
   //  t2CallshowEnv() ;
   for (int i = 0; i < 1000; i++);
