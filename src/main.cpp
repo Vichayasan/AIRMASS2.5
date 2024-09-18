@@ -380,12 +380,15 @@ void _initBME280()
   switch (bme.chipModel())
   {
     case BME280::ChipModel_BME280:
+    bmeStatus = "Found BME280 sensor! Success.";
       //      Serial.println(F("Found BME280 sensor! Success."));
       break;
     case BME280::ChipModel_BMP280:
+    bmeStatus = "Found BMP280 sensor! No Humidity available.";
       //      Serial.println(F("Found BMP280 sensor! No Humidity available."));
       break;
     default:
+    bmeStatus = "Found UNKNOWN sensor! Error!";
       Serial.println(F("Found UNKNOWN sensor! Error!"));
 
   }
@@ -1284,7 +1287,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.3";
+  FirmwareVer = "0.4";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1347,29 +1350,21 @@ void loop() {
   const unsigned long time2send = periodSendTelemetry * 1000;
   // Task t2: Call t2CallShowEnv every 10 seconds (10000 ms)
   if (millis() % time2send == 0) {
-    t1CallGetProbe();
-    Serial.println("debugt1CallGetProbe");
-    t2CallShowEnv();
-    Serial.println("debugt2CallShowEnv");
+    
     Serial.print("periodSendTelemetry:");
     Serial.println(periodSendTelemetry);
     t3CallSendData();
     t4CallPrintPMS7003();
   }
-/*
+/**  */
   // Task t4: Call t4CallPrintPMS7003 every 60 seconds (60000 ms)
-  if (millis() % 60000 == 0) {
-    //heartBeat();
-    Serial.println("Start Loop t4CallPrintPMS7003");
-    
-    Serial.println("debugt4CallPrintPMS7003");
-    Serial.println("Attach WiFi for OTA "); 
-    Serial.println(WiFi.RSSI());
-    Serial.print("TempOffset: "); 
-    Serial.println(TempOffset);
-    setupOTA();
+  if (millis() % 10000 == 0) {
+    t1CallGetProbe();
+    Serial.println("debugt1CallGetProbe");
+    t2CallShowEnv();
+    Serial.println("debugt2CallShowEnv");
   }
-*/
+/***/
   if (millis() % 30000 == 0) {
     heartBeat();
     OTA_git_CALL();
