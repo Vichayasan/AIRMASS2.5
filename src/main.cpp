@@ -1292,7 +1292,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "1.1";
+  FirmwareVer = "1.2";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1368,7 +1368,7 @@ void loop() {
 
   
 
-  if (millis() % 60000 == 0) {
+  if (millis() % 10000 == 0) {
     heartBeat();
     t1CallGetProbe();
     t2CallShowEnv();
