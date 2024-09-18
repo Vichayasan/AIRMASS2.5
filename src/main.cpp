@@ -361,8 +361,8 @@ void _initBME280()
 
   delay(200);
 
-  Wire.begin(21, 22);
-  //Wire.begin();
+  //Wire.begin(21, 22);
+  Wire.begin();
 
   while (!bme.begin())
   {
@@ -1287,7 +1287,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.5";
+  FirmwareVer = "0.6";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1357,13 +1357,7 @@ void loop() {
     t4CallPrintPMS7003();
   }
 /**  */
-  // Task t4: Call t4CallPrintPMS7003 every 60 seconds (60000 ms)
-  if (millis() % 10000 == 0) {
-    t1CallGetProbe();
-    Serial.println("debugt1CallGetProbe");
-    t2CallShowEnv();
-    Serial.println("debugt2CallShowEnv");
-  }
+ 
 /***/
   if (millis() % 30000 == 0) {
     heartBeat();
@@ -1385,6 +1379,10 @@ void loop() {
     //heartBeat();
     t7showTime();
     Serial.println("debugt7showTime");
+    t1CallGetProbe();
+    Serial.println("debugt1CallGetProbe");
+    t2CallShowEnv();
+    Serial.println("debugt2CallShowEnv");
     }
 
   // Handle periodic tasks like heartbeat and OTA setup
