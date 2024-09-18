@@ -375,7 +375,7 @@ void _initBME280()
 
   bmeStatus = "Initialize BME sensor";
   ESPUI.updateLabel(bmeLog, String(bmeStatus));
-  /*
+  /**  */
   // bme.chipID(); // Deprecated. See chipModel().
   switch (bme.chipModel())
   {
@@ -389,7 +389,7 @@ void _initBME280()
       Serial.println(F("Found UNKNOWN sensor! Error!"));
 
   }
-  */
+  /** */
 }
 
 void printBME280Data()
@@ -1298,7 +1298,7 @@ void setup() {
   Serial.println(F("***********************************"));
   //wifiManager.resetSettings();
   wifiManager.setAPCallback(configModeCallback);
-  if (!wifiManager.autoConnect("SmartEnv:3C:61:05:6B:4A:90")) {
+  if (!wifiManager.autoConnect("SmartEnv")) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
     //    ESP.reset();
