@@ -16,6 +16,7 @@
 //#include <ModbusMaster.h>
 //#include "REG_CONFIG.h"
 #include <HardwareSerial.h>
+#include <Adafruit_BME280.h>
 #include <BME280I2C.h>
 
 #include <TFT_eSPI.h>
@@ -362,7 +363,7 @@ void _initBME280()
   delay(200);
 
   //Wire.begin(21, 22);
-  Wire.begin();
+  //Wire.begin();
 
   while (!bme.begin())
   {
@@ -375,7 +376,7 @@ void _initBME280()
 
   bmeStatus = "Initialize BME sensor";
   ESPUI.updateLabel(bmeLog, String(bmeStatus));
-  /**  */
+  /**
   // bme.chipID(); // Deprecated. See chipModel().
   switch (bme.chipModel())
   {
@@ -392,7 +393,7 @@ void _initBME280()
       Serial.println(F("Found UNKNOWN sensor! Error!"));
 
   }
-  /** */
+   */
 }
 
 void printBME280Data()
@@ -1287,7 +1288,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.6";
+  FirmwareVer = "0.7";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1348,20 +1349,22 @@ void setup() {
 
 void loop() {
   const unsigned long time2send = periodSendTelemetry * 1000;
-  // Task t2: Call t2CallShowEnv every 10 seconds (10000 ms)
-  if (millis() % time2send == 0) {
-    
-    Serial.print("periodSendTelemetry:");
-    Serial.println(periodSendTelemetry);
-    t3CallSendData();
-    t4CallPrintPMS7003();
-  }
-/**  */
- 
-/***/
-  if (millis() % 30000 == 0) {
+  // Task t7: Call t7showTime every 0.5 seconds (500 ms)
+  if (millis() % 500 == 0) {
+    //heartBeat();
+    t7showTime();
+    Serial.println("debugt7showTime");
+    }
+
+    if (millis() % 10000 == 0) {
+      t1CallGetProbe();
+    Serial.println("debugt1CallGetProbe");
+    t2CallShowEnv();
+    Serial.println("debugt2CallShowEnv");
+    }
+
+    if (millis() % 30000 == 0) {
     heartBeat();
-    OTA_git_CALL();
     status = WiFi.status();
     if (status == WL_CONNECTED) {
       if (!client.connected()) {
@@ -1372,22 +1375,23 @@ void loop() {
     } else {
       Serial.println("WiFi disconnected");
     }
-  }
-  
-  // Task t7: Call t7showTime every 0.5 seconds (500 ms)
-  if (millis() % 500 == 0) {
-    //heartBeat();
-    t7showTime();
-    Serial.println("debugt7showTime");
-    t1CallGetProbe();
-    Serial.println("debugt1CallGetProbe");
-    t2CallShowEnv();
-    Serial.println("debugt2CallShowEnv");
     }
 
+
+  // Task t2: Call t2CallShowEnv every 10 seconds (10000 ms)
+  if (millis() % time2send == 0) {
+    OTA_git_CALL();
+    Serial.print("periodSendTelemetry:");
+    Serial.println(periodSendTelemetry);
+    t3CallSendData();
+    t4CallPrintPMS7003();
+  }
+/**  */
+ 
+/***/
   // Handle periodic tasks like heartbeat and OTA setup
   /*
-  if (millis() % 120000 == 0) {
+  if (millis() % 36000 == 0) {
     //heartBeat();
     Serial.print("FreeMem:"); Serial.println(ESP.getFreeHeap());
   }*/
