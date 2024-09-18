@@ -1,6 +1,6 @@
 /*#################################An example to connect thingcontro.io MQTT over TLS1.2###############################
 */
-#include <Arduino.h>
+//#include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h>
@@ -71,10 +71,10 @@ void t4CallPrintPMS7003();
 void t7showTime();
 
 // Variables to keep track of the last execution time for each task
-Task t1(10000, TASK_FOREVER, &t1CallGetProbe);  //adding task to the chain on creation
-Task t2(30000, TASK_FOREVER, &t2CallShowEnv);
-Task t3(10000, TASK_FOREVER, &t3CallSendData);
-Task t4(60000, TASK_FOREVER, &t4CallPrintPMS7003);  //adding task to the chain on creation
+Task t1(60000, TASK_FOREVER, &t1CallGetProbe);  //adding task to the chain on creation
+Task t2(60000, TASK_FOREVER, &t2CallShowEnv);
+Task t3(300000, TASK_FOREVER, &t3CallSendData);
+Task t4(300000, TASK_FOREVER, &t4CallPrintPMS7003);  //adding task to the chain on creation
 Task t5(120000, TASK_FOREVER, &heartBeat);
 Task t6(300000, TASK_FOREVER, &OTA_git_CALL);
 Task t7(500, TASK_FOREVER, &t7showTime);
@@ -1085,11 +1085,11 @@ void t2CallShowEnv() {
     drawPM10(data.pm100_env, 55, 195);
     tft.drawString(title3, 100, 235, GFXFF); // Print the test text in the custom font
 
-    drawCO2(0, 115, 195);
-    tft.drawString(title4, 150, 235, GFXFF); // Print the test text in the custom font
+    //drawCO2(0, 115, 195);
+    //tft.drawString(title4, 150, 235, GFXFF); // Print the test text in the custom font
 
-    drawVOC(0, 170, 195);
-    tft.drawString(title5, 210, 235, GFXFF); // Print the test text in the custom font
+    //drawVOC(0, 170, 195);
+    //tft.drawString(title5, 210, 235, GFXFF); // Print the test text in the custom font
 
     tft.drawString(title8, 250, 215, GFXFF); // Print the test text in the custom font
     drawH(hum, 255, 195);
@@ -1174,7 +1174,6 @@ void t7showTime() {
 
   topNumber.pushSprite(5, 5);
   topNumber.deleteSprite();
-
 
 }
 
@@ -1280,8 +1279,9 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "1.6";
+  FirmwareVer = "1.7";
   Serial.begin(115200);
+  Wire.begin();
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
   _initBME280();
@@ -1360,11 +1360,13 @@ void setup() {
   tft.fillRect(166, 185, tft.width() - 15, 5, TFT_RED); // Print the test text in the custom font
   tft.fillRect(219, 185, tft.width() - 15, 5, TFT_PURPLE); // Print the test text in the custom font
   tft.fillRect(272, 185, tft.width() - 15, 5, TFT_BURGUNDY); // Print the test text in the custom font
+  /*
   t1CallGetProbe();
   t2CallShowEnv();
   t3CallSendData();
   t4CallPrintPMS7003();
   t7showTime();
+  */
 }
 
 void loop() {
