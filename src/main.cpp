@@ -1284,7 +1284,7 @@ void getMac()
 
 void setup() {
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.1";
+  FirmwareVer = "0.2";
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
@@ -1298,7 +1298,7 @@ void setup() {
   Serial.println(F("***********************************"));
   //wifiManager.resetSettings();
   wifiManager.setAPCallback(configModeCallback);
-  if (!wifiManager.autoConnect("SmartEnv")) {
+  if (!wifiManager.autoConnect(deviceToken.c_str())) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
     //    ESP.reset();
