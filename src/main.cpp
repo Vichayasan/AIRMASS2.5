@@ -68,6 +68,8 @@ void t4CallPrintPMS7003();
 void t6OTA();
 void t7showTime();
 
+int periodSendTelemetry = 60;  //the value is a number of seconds
+
 /*
 // Variables to keep track of the last execution time for each task
 Task t1(60000, TASK_FOREVER, &t1CallGetProbe);  //adding task to the chain on creation
@@ -77,7 +79,9 @@ Task t4(300000, TASK_FOREVER, &t4CallPrintPMS7003);  //adding task to the chain 
 Task t5(120000, TASK_FOREVER, &heartBeat);
 Task t6(600000, TASK_FOREVER, &OTA_git_CALL);
 Task t7(500, TASK_FOREVER, &t7showTime);
-Task t8(300000, TASK_FOREVER, &composeJson);
+
+const unsigned long time2send = periodSendTelemetry * 1000;
+Task t8(time2send, TASK_FOREVER, &composeJson);
 */
 
 #define TFT_BLACK       0x0000      /*   0,   0,   0 */
@@ -127,12 +131,13 @@ uint32_t getAbsoluteHumidity(float temperature, float humidity) {
 
 #define WIFI_AP ""
 #define WIFI_PASSWORD ""
-#define HOSTNAME "AIS-IoT-AIRMASS2.5"
-#define FORCE_USE_HOTSPOT 0
 
 String deviceToken = "";
 char thingsboardServer[] = "tb.thingcontrol.io";
 int PORT = 1883;
+
+String host2 = "";
+#define FORCE_USE_HOTSPOT 0
 
 #define CF_OL24 &Orbitron_Light_24
 #define CF_OL32 &Orbitron_Light_32
@@ -185,9 +190,6 @@ bool connectWifi = false;
 String json = "";
 
 //ModbusMaster node;
-
-int periodSendTelemetry = 60;  //the value is a number of seconds
-
 ///UI handles
 uint16_t wifi_ssid_text, wifi_pass_text;
 uint16_t nameLabel, idLabel, cuationlabel, firmwarelabel, mainSwitcher, mainSlider, mainText, settingZNumber, resultButton, mainTime, downloadButton, selectDownload, logStatus;
@@ -491,11 +493,11 @@ void setUpUI() {
   auto eventTab = ESPUI.addControl(Tab, "", "Event Log");
   ESPUI.addControl(Separator, "Error Log", "", None, eventTab);
   teleLog = ESPUI.addControl(Label, "Server Connection Status", String(mqttStatus), Alizarin, eventTab, enterDetailsCallback);
-  bmeLog = ESPUI.addControl(Label, "Sensor Connection Status", String(bmeStatus), Alizarin, eventTab, enterDetailsCallback); 
-
+  bmeLog = ESPUI.addControl(Label, "Sensor Connection Status", String(bmeStatus), Alizarin, eventTab, enterDetailsCallback);
+  host2 = "AIS-IoT:" + deviceToken;
   //Finally, start up the UI.
   //This should only be called once we are connected to WiFi.
-  ESPUI.begin(deviceToken.c_str());
+  ESPUI.begin(host2.c_str());
   
   }
 
@@ -1217,15 +1219,16 @@ void setup() {
   _initBME280();
   getMac();
   Project = "AIRMASS2.5";
-  FirmwareVer = "2.0";
+  FirmwareVer = "2.2";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
   Serial.println();
   Serial.println(F("***********************************"));
   //wifiManager.resetSettings();
+  String host = "SmartEnv:" + deviceToken;
   wifiManager.setAPCallback(configModeCallback);
-  if (!wifiManager.autoConnect(deviceToken.c_str())) {
+  if (!wifiManager.autoConnect(host.c_str())) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
     //    ESP.reset();
@@ -1239,14 +1242,13 @@ void setup() {
   client.setServer( thingsboardServer, PORT );
   //  client.setCallback(callback);
   reconnectMqtt();
-
   Serial.print("Start..");
   tft.fillScreen(TFT_DARKCYAN);
   tft.drawString("Wait for WiFi Setting (Timeout 60 Sec)", tft.width() / 2, tft.height() / 2, GFXFF);
-  
-  MDNS.begin(deviceToken.c_str());
+  host2 = "AIS-IoT:" + deviceToken;
+  MDNS.begin(host2.c_str());
   WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
-  WiFi.softAP(deviceToken.c_str());
+  WiFi.softAP(host2.c_str());
   setUpUI(); //Start the GUI
   delay(200);
   
@@ -1284,6 +1286,7 @@ void setup() {
   //  t1CallgetProbe();
   //  t2CallshowEnv() ;
   */
+  
   for (int i = 0; i < 1000; i++);
   tft.fillScreen(TFT_BLACK);            // Clear screen
 
@@ -1293,6 +1296,11 @@ void setup() {
   tft.fillRect(166, 185, tft.width() - 15, 5, TFT_RED); // Print the test text in the custom font
   tft.fillRect(219, 185, tft.width() - 15, 5, TFT_PURPLE); // Print the test text in the custom font
   tft.fillRect(272, 185, tft.width() - 15, 5, TFT_BURGUNDY); // Print the test text in the custom font
+  t1CallGetProbe();
+  t2CallShowEnv();
+  t3CallSendData();
+  t4CallPrintPMS7003();
+  t7showTime();
 }
 
 // Variables to keep track of the last execution time for each task
@@ -1300,6 +1308,7 @@ void setup() {
 
 void loop() {
   //runner.execute();
+  
   const unsigned long currentMillis = millis();
   const unsigned long time2send = periodSendTelemetry * 1000;
   if (currentMillis % time2send == 0){
