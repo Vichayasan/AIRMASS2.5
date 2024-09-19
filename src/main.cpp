@@ -1,12 +1,11 @@
 /*#################################An example to connect thingcontro.io MQTT over TLS1.2###############################
 */
-//#include <Arduino.h>
+#include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
-#include <TaskScheduler.h>
 
 #include <WiFiManager.h>
 #include <WiFiClientSecure.h>
@@ -17,16 +16,17 @@
 //#include <ModbusMaster.h>
 //#include "REG_CONFIG.h"
 #include <HardwareSerial.h>
-//#include <Adafruit_BME280.h>
 //#include <BME280I2C.h>
-//#include <Adafruit_Sensor.h>
-#include <SparkFunBME280.h>
+#include <sparkFunBME280.h>
 
 #include <TFT_eSPI.h>
 #include <SPI.h>
 
 #include <ESPUI.h>
 #include <ESPmDNS.h>
+
+#include <TaskScheduler.h>
+#include <http_ota.h>
 
 //#include "Adafruit_SGP30.h"
 #include <Adafruit_MLX90614.h>
@@ -41,19 +41,16 @@
 //  #include "NBIOT.h"
 #include "wifilogo.h"
 #include <time.h>
-#include <TimeLib.h>
 #include "Free_Fonts.h"
-
-#include "http_ota.h"
 struct tm tmstruct;
+struct tm timeinfo;
+
 #define _TASK_SLEEP_ON_IDLE_RUN
 #define _TASK_PRIORITY
 #define _TASK_WDT_IDS
 #define _TASK_TIMECRITICAL
-//struct tm timeinfo;
 
 Scheduler runner;
-
 
 boolean readPMSdata(Stream *s);
 void composeJson();
@@ -68,18 +65,20 @@ void t1CallGetProbe();
 void t2CallShowEnv();
 void t3CallSendData();
 void t4CallPrintPMS7003();
+void t6OTA();
 void t7showTime();
 
+/*
 // Variables to keep track of the last execution time for each task
 Task t1(60000, TASK_FOREVER, &t1CallGetProbe);  //adding task to the chain on creation
 Task t2(60000, TASK_FOREVER, &t2CallShowEnv);
 Task t3(300000, TASK_FOREVER, &t3CallSendData);
 Task t4(300000, TASK_FOREVER, &t4CallPrintPMS7003);  //adding task to the chain on creation
 Task t5(120000, TASK_FOREVER, &heartBeat);
-Task t6(300000, TASK_FOREVER, &OTA_git_CALL);
+Task t6(600000, TASK_FOREVER, &OTA_git_CALL);
 Task t7(500, TASK_FOREVER, &t7showTime);
 Task t8(300000, TASK_FOREVER, &composeJson);
-
+*/
 
 #define TFT_BLACK       0x0000      /*   0,   0,   0 */
 #define TFT_NAVY        0x000F      /*   0,   0, 128 */
@@ -110,7 +109,6 @@ Task t8(300000, TASK_FOREVER, &composeJson);
 #define trigWDTPin 33
 #define ledHeartPIN 0
 #define swTFTPin 32
-unsigned long ms;
 
 #define SERIAL1_RXPIN 16
 #define SERIAL1_TXPIN 17
@@ -129,13 +127,12 @@ uint32_t getAbsoluteHumidity(float temperature, float humidity) {
 
 #define WIFI_AP ""
 #define WIFI_PASSWORD ""
+#define HOSTNAME "AIS-IoT-AIRMASS2.5"
+#define FORCE_USE_HOTSPOT 0
 
 String deviceToken = "";
 char thingsboardServer[] = "tb.thingcontrol.io";
 int PORT = 1883;
-
-#define HOSTNAME "AIRMASS2.5"
-#define FORCE_USE_HOTSPOT 0
 
 #define CF_OL24 &Orbitron_Light_24
 #define CF_OL32 &Orbitron_Light_32
@@ -143,8 +140,8 @@ int PORT = 1883;
 #define title1 "PM2.5" // Text that will be printed on screen in any font
 #define title2 "PM1"
 #define title3 "PM10"
-#define title4 "NaN"
-#define title5 "NaN"
+#define title4 "CO2"
+#define title5 "VOC"
 #define title6 "Update"
 #define title7 "ug/m3"
 #define title8 "RH"
@@ -164,8 +161,8 @@ int pn10Offset = 0;
 int pn25Offset = 0;
 int pn50Offset = 0;
 int pn100Offset = 0;
-//  int CO2Offset = 0;
-//  int VOCOffset = 0;
+int CO2Offset = 0;
+int VOCOffset = 0;
 String bmeStatus = "";
 String mqttStatus = "";
 
@@ -189,15 +186,9 @@ String json = "";
 
 //ModbusMaster node;
 
-//static const char *fingerprint PROGMEM = "69 E5 FE 17 2A 13 9C 7C 98 94 CA E0 B0 A6 CB 68 66 6C CB 77"; // need to update every 3 months
-unsigned long startMillis;  //some global variables available anywhere in the program
-unsigned long startTeleMillis;
-unsigned long starSendTeletMillis;
-unsigned long currentMillis;
-const unsigned long periodCallBack = 1000;  //the value is a number of milliseconds
 int periodSendTelemetry = 60;  //the value is a number of seconds
 
-//UI handles
+///UI handles
 uint16_t wifi_ssid_text, wifi_pass_text;
 uint16_t nameLabel, idLabel, cuationlabel, firmwarelabel, mainSwitcher, mainSlider, mainText, settingZNumber, resultButton, mainTime, downloadButton, selectDownload, logStatus;
 //  uint16_t styleButton, styleLabel, styleSwitcher, styleSlider, styleButton2, styleLabel2, styleSlider2;
@@ -259,20 +250,11 @@ struct pms7003data {
 };
 
 struct pms7003data data;
-//
-/*
-void calibrate() {
-  uint16_t readTvoc = 0x7DD9;
-  uint16_t readCo2 = 0x8512;
-  Serial.println("Done Calibrate");
- 
 
-  Serial.println("Calibrate");
-  Serial.print("****Baseline values: eCO2: 0x"); Serial.print(readCo2, HEX);
-  Serial.print(" & TVOC: 0x"); Serial.println(readTvoc, HEX);
-  sgp.setIAQBaseline(readCo2, readTvoc);
+void t6OTA(){
+  OTA_git_CALL();
 }
-*/
+
 void splash() {
   int xpos =  0;
   int ypos = 40;
@@ -304,7 +286,7 @@ void splash() {
   //delay(4000);
   tft.setTextColor(TFT_WHITE);
   tft.setFreeFont(FSB9);
-  tft.drawString(nccidStr, xpos, ypos + 50, GFXFF);
+  tft.drawString(nccidStr, xpos, ypos + 45, GFXFF);
   delay(5000);
 
   tft.setTextFont(GLCD);
@@ -339,15 +321,15 @@ void _initLCD() {
   // MLX
   mlx.begin();
 }
-/*
+
 void errorTimeDisplay(int i) {
   tft.fillScreen(TFT_DARKCYAN);
   int xpos = tft.width() / 2; // Half the screen width
   int ypos = tft.height() / 2;
   tft.drawString("Connect Server failed " + String(i + 1) + " times", xpos, ypos, GFXFF);
 }
-*/
-/*
+
+
 char  char_to_byte(char c)
 {
   if ((c >= '0') && (c <= '9'))
@@ -359,7 +341,6 @@ char  char_to_byte(char c)
     return (c - 55);
   }
 }
-*/
 void drawUpdate(int num, int x, int y)
 {
   stringUpdate.createSprite(50, 20);
@@ -440,6 +421,7 @@ void printBME280Data()
 }
 
 // This is the main function which builds our GUI
+// This is the main function which builds our GUI
 void setUpUI() {
 
   //Turn off verbose  ging
@@ -513,7 +495,7 @@ void setUpUI() {
 
   //Finally, start up the UI.
   //This should only be called once we are connected to WiFi.
-  ESPUI.begin(HOSTNAME);
+  ESPUI.begin(deviceToken.c_str());
   
   }
 
@@ -561,8 +543,10 @@ void enterDetailsCallback(Control *sender, int type) {
     lineID = lineID_->value;
     char data1[40];
     char data2[40];
+    char data3[40];
     email1.toCharArray(data1, 40);  // Convert String to char array
     lineID.toCharArray(data2, 40);
+    deviceToken.toCharArray(data3, 40);
     
     // Print to Serial
     Serial.println("put TempOffset: " + String(TempOffset));
@@ -572,7 +556,7 @@ void enterDetailsCallback(Control *sender, int type) {
 
 
     // Write to EEPROM
-    EEPROM.begin(150); // Ensure enough size for data
+    EEPROM.begin(180); // Ensure enough size for data
     int addr = 0;
   
     EEPROM.put(addr, TempOffset);
@@ -615,6 +599,11 @@ void enterDetailsCallback(Control *sender, int type) {
       EEPROM.write(addr + len, data2[len]);  // Write each character
     }
     EEPROM.write(addr + lineID.length(), '\0');  // Add null terminator at the end
+    addr = 140;
+    for (int len = 0; len < deviceToken.length(); len++) {
+      EEPROM.write(addr + len, data3[len]);  // Write each character
+    }
+    EEPROM.write(addr + deviceToken.length(), '\0');  // Add null terminator at the end
     EEPROM.commit();
     //  addr += (email1.length() + 1); For the future project
     //Dubug Address
@@ -633,7 +622,7 @@ void enterDetailsCallback(Control *sender, int type) {
 
 void readEEPROM() {
   Serial.println("Reading credentials from EEPROM...");
-  EEPROM.begin(140); // Ensure enough size for data
+  EEPROM.begin(180); // Ensure enough size for data
   
   //Dubug Address
     /*
@@ -689,6 +678,12 @@ void readEEPROM() {
       if(data2 == '\0' || data2 == 255) break;
       lineID += data2;
     }
+    addr = 140;
+    for (int len = 0; len < 50; len++){
+      char data3 = EEPROM.read(addr + len);
+      if(data3 == '\0' || data3 == 255) break;
+      deviceToken += data3;
+    }
     EEPROM.end();
   // Print to Serial
   Serial.println("get TempOffset: " + String(TempOffset));
@@ -723,7 +718,6 @@ void readEEPROM() {
   ESPUI.updateText(emailText1, String(email1));
   ESPUI.updateText(lineText, String(lineID));
 }
-
 void processAtt(char jsonAtt[])
 {
   char *aString = jsonAtt;
@@ -733,6 +727,11 @@ void processAtt(char jsonAtt[])
   client.publish( "v1/devices/me/attributes", aString);
 }
 
+
+void unrecognized(const char *command)
+{
+  Serial.println("ERROR");
+}
 
 void reconnectMqtt()
 {
@@ -765,6 +764,8 @@ void sendAttribute(){
   processAtt(char_array);
 }
 
+
+
 void t1CallGetProbe() {
 
   boolean pmsReady = readPMSdata(&hwSerial);
@@ -790,6 +791,9 @@ void t1CallGetProbe() {
     }
 
   }
+
+
+
   printBME280Data();
   //getDataSGP30();
 }
@@ -862,18 +866,6 @@ void drawPM1(int num, int x, int y)
 }
 //
 
-void drawCO2(int num, int x, int y)
-{
-  stringCO2.createSprite(60, 20);
-  stringCO2.fillSprite(TFT_BLACK);
-  stringCO2.setFreeFont(FSB9);
-  stringCO2.setTextColor(TFT_WHITE);
-  stringCO2.setTextSize(1);
-  stringCO2.drawNumber(num, 0, 3);
-  stringCO2.pushSprite(x, y);
-  //  stringCO2.deleteSprite();
-}
-//
 
 void drawPM10(int num, int x, int y)
 {
@@ -892,7 +884,7 @@ void t3CallSendData() {
   digitalWrite(12, HIGH);
   delay(2000);
   digitalWrite(12, LOW);
-
+  delay(200);
   tft.setTextColor(0xFFFF);
   int mapX = 315;
   int mapY = 30;
@@ -910,6 +902,10 @@ void t3CallSendData() {
     tft.pushImage(240, 0, wifilogoWidth, wifilogoHeight, wifilogo);
     
   } else if (WiFi.status() == WL_CONNECTED) {
+    
+      reconnectMqtt();
+
+ 
     int rssi = map(WiFi.RSSI(), -90, -50, 25, 100);
     if (rssi > 100) rssi = 100;
     if (rssi < 0) rssi = 0;
@@ -921,11 +917,6 @@ void t3CallSendData() {
     tft.drawString("W", 265, 27);
     //client.setInsecure();
     Serial.print(" deviceToken.c_str()"); Serial.println(deviceToken.c_str());
-     if ( !client.connected() )
-    {
-      reconnectMqtt();
-    }
-    client.loop();
   }
   Serial.println("Endt3CallSendData()");
 
@@ -965,14 +956,9 @@ void composeJson() {
   json.concat(data.particles_50um + (pn50Offset / 100));
   json.concat(",\"pn100\":");
   json.concat(data.particles_100um + (pn100Offset / 100));
-  /*
-  json.concat(",\"co2\":");
-  json.concat(sgp.eCO2 + (CO2Offset / 100));
-  json.concat(",\"voc\":");
-  json.concat(sgp.TVOC + (VOCOffset / 100));
-  */
+  
   json.concat(",\"project\":\"AIRMASS2.5\"");
-  json.concat(",\"v\":\"3.5\"");
+  json.concat(",\"v\":\"3.1\"");
   json.concat("}");
   Serial.println(json);
   //SerialBT.println(json);
@@ -1016,33 +1002,20 @@ Serial.println("Start Loop t4CallPrintPMS7003");
 
 void heartBeat()
 {
-  //   Sink current to drain charge from watchdog circuit
-  pinMode(trigWDTPin, OUTPUT);
-  digitalWrite(trigWDTPin, LOW);
-
-  // Led monitor for Heartbeat
-  digitalWrite(ledHeartPIN, LOW);
-  delay(100);
-  digitalWrite(ledHeartPIN, HIGH);
+  // Sink current to drain charge from watchdog circuit
+  pinMode(WDTPin, OUTPUT);
+  digitalWrite(WDTPin, LOW);
 
   // Return to high-Z
-  pinMode(trigWDTPin, INPUT);
+  pinMode(WDTPin, INPUT);
+  digitalWrite(WDTPin, HIGH);
+
 
   Serial.println("Heartbeat");
-  // SerialBT.println("Heartbeat");
+  //SerialBT.println("Heartbeat");
 }
 
-void drawVOC(int num, int x, int y)
-{
-  stringVOC.createSprite(60, 20);
-  //  stringVOC.fillSprite(TFT_GREEN);
-  stringVOC.setFreeFont(FSB9);
-  stringVOC.setTextColor(TFT_WHITE);
-  stringVOC.setTextSize(1);
-  stringVOC.drawNumber(num, 0, 3);
-  stringVOC.pushSprite(x, y);
-  stringVOC.deleteSprite();
-}
+
 
 void t2CallShowEnv() {
   //  Serial.print(F("ready2display:"));
@@ -1068,7 +1041,7 @@ void t2CallShowEnv() {
     // ################################################################ end test
 
 
-    drawPM2_5(data.pm25_env, mid, 45);
+    drawPM2_5(data.pm25_env + (pm25Offset / 100), mid, 45);
 
     tft.setTextSize(1);
     tft.setFreeFont(CF_OL32);                 // Select the font
@@ -1079,24 +1052,19 @@ void t2CallShowEnv() {
 
     tft.setFreeFont(FSB9);   // Select Free Serif 9 point font, could use:
 
-    drawPM1(data.pm01_env, 6, 195);
+    drawPM1(data.pm01_env + (pm01Offset / 100), 6, 195);
     tft.drawString(title2, 40, 235, GFXFF); // Print the test text in the custom font
 
-    drawPM10(data.pm100_env, 55, 195);
+    drawPM10(data.pm100_env + (pm10Offset / 100), 55, 195);
     tft.drawString(title3, 100, 235, GFXFF); // Print the test text in the custom font
 
-    //drawCO2(0, 115, 195);
-    //tft.drawString(title4, 150, 235, GFXFF); // Print the test text in the custom font
-
-    //drawVOC(0, 170, 195);
-    //tft.drawString(title5, 210, 235, GFXFF); // Print the test text in the custom font
-
+    
     tft.drawString(title8, 250, 215, GFXFF); // Print the test text in the custom font
-    drawH(hum, 255, 195);
+    drawH(hum + (HumOffset1 / 100), 255, 195);
     tft.drawString("%", 312, 215, GFXFF);
 
     tft.drawString(title9, 250, 235, GFXFF); // Print the test text in the custom font
-    drawT(temp, 255, 215);
+    drawT(temp + (TempOffset / 100), 255, 215);
     tft.drawString("C", 312, 235, GFXFF);
 
     //Clear Stage
@@ -1104,20 +1072,20 @@ void t2CallShowEnv() {
     ind.createSprite(320, 10);
     ind.fillSprite(TFT_BLACK);
 
-    if ((data.pm25_env >= 0) && (data.pm25_env <= 15.4)) {
+    if ((data.pm25_env + (pm25Offset / 100) >= 0) && (data.pm25_env + (pm25Offset / 100) <= 15.4)) {
       tft.setWindow(0, 25, 55, 55);
       tft.pushImage(tft.width() - lv1Width - 6, 45, lv1Width, lv1Height, lv1);
       ind.fillTriangle(0, 0, 5, 5, 10, 0, FILLCOLOR1);
-    } else if ((data.pm25_env >= 15.5) && (data.pm25_env <= 40.4)  ) {
+    } else if ((data.pm25_env + (pm25Offset / 100) >= 15.5) && (data.pm25_env + (pm25Offset / 100) <= 40.4)  ) {
       tft.pushImage(tft.width() - lv2Width - 6, 45, lv2Width, lv2Height, lv2);
       ind.fillTriangle(55, 0, 60, 5, 65, 0, FILLCOLOR1);
-    } else  if ((data.pm25_env >= 40.5) && (data.pm25_env <= 65.4)  ) {
+    } else  if ((data.pm25_env + (pm25Offset / 100) >= 40.5) && (data.pm25_env + (pm25Offset / 100) <= 65.4)  ) {
       tft.pushImage(tft.width() - lv3Width - 6, 45, lv3Width, lv3Height, lv3);
       ind.fillTriangle(105, 0, 110, 5, 115, 0, FILLCOLOR1);
-    } else  if ((data.pm25_env >= 65.5) && (data.pm25_env <= 150.4)  ) {
+    } else  if ((data.pm25_env + (pm25Offset / 100) >= 65.5) && (data.pm25_env + (pm25Offset / 100) <= 150.4)  ) {
       tft.pushImage(tft.width() - lv4Width - 6, 45, lv4Width, lv4Height, lv4);
       ind.fillTriangle(155, 0, 160, 5, 165, 0, FILLCOLOR1);
-    } else  if ((data.pm25_env >= 150.5) && (data.pm25_env <= 250.4)  ) {
+    } else  if ((data.pm25_env + (pm25Offset / 100) >= 150.5) && (data.pm25_env + (pm25Offset / 100) <= 250.4)  ) {
       tft.pushImage(tft.width() - lv5Width - 6, 45, lv5Width, lv5Height, lv5);
       ind.fillTriangle(210, 0, 215, 5, 220, 0, FILLCOLOR1);
     } else {
@@ -1163,7 +1131,7 @@ void t7showTime() {
     timeS = dayStr + "/" + monthStr + "/" + yearStr + "  [" + hourStr + ":" + minStr + "]";
 
   } else {
-    if (!getLocalTime(&tmstruct)) {
+    if (!getLocalTime(&timeinfo)) {
       Serial.println("Failed to obtain time");
       //      ESP.restart();
       return;
@@ -1175,7 +1143,10 @@ void t7showTime() {
   topNumber.pushSprite(5, 5);
   topNumber.deleteSprite();
 
+
 }
+
+
 
 boolean readPMSdata(Stream *s) {
   Serial.println("readPMSdata");
@@ -1220,46 +1191,8 @@ boolean readPMSdata(Stream *s) {
   // success!
   return true;
 }
-/*
-void getDataSGP30 () {
-  // put your main code here, to run repeatedly:
-  // If you have a temperature / humidity sensor, you can set the absolute humidity to enable the humditiy compensation for the air quality signals
-  float temperature = temp; // [°C]
-  float humidity = hum; // [%RH]
-  sgp.setHumidity(getAbsoluteHumidity(temperature, humidity));
-
-  if (! sgp.IAQmeasure()) {
-    Serial.println("Measurement failed");
-    return;
-  }
-  Serial.print("TVOC "); Serial.print(sgp.TVOC); Serial.print(" ppb\t");
-  Serial.print("eCO2 "); Serial.print(sgp.eCO2); Serial.println(" ppm");
 
 
-  if (! sgp.IAQmeasureRaw()) {
-    Serial.println("Raw Measurement failed");
-    return;
-  }
-  Serial.print("Raw H2 "); Serial.print(sgp.rawH2); Serial.print(" \t");
-  Serial.print("Raw Ethanol "); Serial.print(sgp.rawEthanol); Serial.println("");
-
-
-
-  uint16_t TVOC_base = 0x7DD9;
-  uint16_t eCO2_base = 0x8512;
-
-
-  if (! sgp.getIAQBaseline(&eCO2_base, &TVOC_base)) {
-    Serial.println("Failed to get baseline readings");
-    return;
-  }
-
-  Serial.print("****Get Baseline values: eCO2: 0x"); Serial.print(eCO2_base, HEX);
-  Serial.print(" & TVOC: 0x"); Serial.println(TVOC_base, HEX);
-
-
-
-}*/
 
 void getMac()
 {
@@ -1278,15 +1211,13 @@ void getMac()
 }
 
 void setup() {
-  Project = "AIRMASS2.5";
-  FirmwareVer = "1.7";
   Serial.begin(115200);
-  Wire.begin();
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   _initLCD();
   _initBME280();
   getMac();
-  
+  Project = "AIRMASS2.5";
+  FirmwareVer = "2.0";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1302,6 +1233,7 @@ void setup() {
     delay(1000);
   }
   configTime(3600 * timezone, daysavetime * 3600, "0.pool.ntp.org", "1.pool.ntp.org", "time.nist.gov");
+ 
 
   //  wifiClient.setFingerprint(fingerprint);
   client.setServer( thingsboardServer, PORT );
@@ -1311,15 +1243,15 @@ void setup() {
   Serial.print("Start..");
   tft.fillScreen(TFT_DARKCYAN);
   tft.drawString("Wait for WiFi Setting (Timeout 60 Sec)", tft.width() / 2, tft.height() / 2, GFXFF);
-  startMillis = millis();  //initial start time
-  MDNS.begin(HOSTNAME);
+  
+  MDNS.begin(deviceToken.c_str());
   WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
-  WiFi.softAP(HOSTNAME);
+  WiFi.softAP(deviceToken.c_str());
   setUpUI(); //Start the GUI
-  ESPUI.updateLabel(firmwarelabel, String(FirmwareVer));
   delay(200);
   
   readEEPROM();
+  /*
   runner.init();
   //  Serial.println("Initialized scheduler");
 
@@ -1332,7 +1264,7 @@ void setup() {
   runner.addTask(t4);
   //  Serial.println("added t4");
   runner.addTask(t5);
-  runner.addTask(t6);
+  //runner.addTask(t6);
   runner.addTask(t7);
   runner.addTask(t8);
   delay(2000);
@@ -1345,12 +1277,13 @@ void setup() {
   //  Serial.println("Enabled t3");
   t4.enable();
   //  Serial.println("Enabled t2");
-  t6.enable();
+  //t6.enable();
   t5.enable();
   t7.enable();
   t8.enable();
   //  t1CallgetProbe();
   //  t2CallshowEnv() ;
+  */
   for (int i = 0; i < 1000; i++);
   tft.fillScreen(TFT_BLACK);            // Clear screen
 
@@ -1360,46 +1293,34 @@ void setup() {
   tft.fillRect(166, 185, tft.width() - 15, 5, TFT_RED); // Print the test text in the custom font
   tft.fillRect(219, 185, tft.width() - 15, 5, TFT_PURPLE); // Print the test text in the custom font
   tft.fillRect(272, 185, tft.width() - 15, 5, TFT_BURGUNDY); // Print the test text in the custom font
-  /*
-  t1CallGetProbe();
-  t2CallShowEnv();
-  t3CallSendData();
-  t4CallPrintPMS7003();
-  t7showTime();
-  */
 }
 
-void loop() {
-  runner.execute();
-  /*
-  const unsigned long time2send = periodSendTelemetry * 1000;
-  // Task t7: Call t7showTime every 0.5 seconds (500 ms)
+// Variables to keep track of the last execution time for each task
 
-  if (millis() % time2send == 0) {
-    heartBeat();
-    OTA_git_CALL();
-    Serial.print("periodSendTelemetry:");
-    Serial.println(periodSendTelemetry);
+
+void loop() {
+  //runner.execute();
+  const unsigned long currentMillis = millis();
+  const unsigned long time2send = periodSendTelemetry * 1000;
+  if (currentMillis % time2send == 0){
     t3CallSendData();
     t4CallPrintPMS7003();
-    
-    //Serial.println("debugt1CallGetProbe");
+    composeJson();
   }
-
-  
-
-  if (millis() % 10000 == 0) {
-    heartBeat();
+  if (currentMillis % 60000 == 0){
     t1CallGetProbe();
     t2CallShowEnv();
-    Serial.println("debugt2CallShowEnv");
   }
-
-
-  // Task t2: Call t2CallShowEnv every 10 seconds (10000 ms)
-   if (millis() % 500 == 0) {
+  if (currentMillis % 500 == 0){
     t7showTime();
-    //Serial.println("debugt7showTime");
-   }
- */
+  }
+  if (currentMillis % 600000 == 0)
+  {
+    OTA_git_CALL();
+  }
+  if (currentMillis % 120000 == 0)
+  {
+    heartBeat();
+  }
+  
 }
