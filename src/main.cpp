@@ -253,9 +253,6 @@ struct pms7003data {
 
 struct pms7003data data;
 
-void t6OTA(){
-  OTA_git_CALL();
-}
 
 void splash() {
   int xpos =  0;
@@ -280,7 +277,7 @@ void splash() {
   //  AISnb.setupDevice(serverPort);
   //
 
-  NCCID = deviceToken;
+  NCCID = deviceToken.c_str();
   NCCID.trim();
   String nccidStr = "";
   nccidStr.concat("Device ID:");
@@ -1215,11 +1212,11 @@ void getMac()
 void setup() {
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
+  getMac();
   _initLCD();
   _initBME280();
-  getMac();
   Project = "AIRMASS2.5";
-  FirmwareVer = "2.2";
+  FirmwareVer = "2.3";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
