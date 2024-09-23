@@ -271,7 +271,7 @@ void splash() {
   tft.setFreeFont(FSB9);
   xpos = tft.width() / 2; // Half the screen width
   ypos = 150;
-  tft.drawString("AIRMASS2.5 version3.1", xpos, ypos + 25, GFXFF);  // Draw the text string in the selected GFX free font
+  tft.drawString("AIRMASS2.5 version3.5", xpos, ypos + 25, GFXFF);  // Draw the text string in the selected GFX free font
   //  tft.drawString("", xpos, ypos + 20, GFXFF); // Draw the text string in the selected GFX free font
   //  AISnb.debug = true;
   //  AISnb.setupDevice(serverPort);
@@ -1216,7 +1216,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "2.3";
+  FirmwareVer = "2.4";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1313,7 +1313,7 @@ void loop() {
     t4CallPrintPMS7003();
     composeJson();
   }
-  if (currentMillis % 60000 == 0){
+  if (currentMillis % 10000 == 0){
     t1CallGetProbe();
     t2CallShowEnv();
   }
