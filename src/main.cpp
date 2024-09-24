@@ -598,11 +598,13 @@ void enterDetailsCallback(Control *sender, int type) {
       EEPROM.write(addr + len, data2[len]);  // Write each character
     }
     EEPROM.write(addr + lineID.length(), '\0');  // Add null terminator at the end
+    /*
     addr = 140;
     for (int len = 0; len < deviceToken.length(); len++) {
       EEPROM.write(addr + len, data3[len]);  // Write each character
     }
     EEPROM.write(addr + deviceToken.length(), '\0');  // Add null terminator at the end
+    */
     EEPROM.commit();
     //  addr += (email1.length() + 1); For the future project
     //Dubug Address
@@ -677,12 +679,14 @@ void readEEPROM() {
       if(data2 == '\0' || data2 == 255) break;
       lineID += data2;
     }
+    /*
     addr = 140;
     for (int len = 0; len < 50; len++){
       char data3 = EEPROM.read(addr + len);
       if(data3 == '\0' || data3 == 255) break;
       deviceToken += data3;
     }
+    */
     EEPROM.end();
   // Print to Serial
   Serial.println("get TempOffset: " + String(TempOffset));
@@ -1216,7 +1220,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "2.6";
+  FirmwareVer = "2.7";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
