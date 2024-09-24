@@ -905,10 +905,9 @@ void t3CallSendData() {
     tft.pushImage(240, 0, wifilogoWidth, wifilogoHeight, wifilogo);
     
   } else if (WiFi.status() == WL_CONNECTED) {
-    
+    if (!client.connected()) {
       reconnectMqtt();
-
- 
+    }
     int rssi = map(WiFi.RSSI(), -90, -50, 25, 100);
     if (rssi > 100) rssi = 100;
     if (rssi < 0) rssi = 0;
@@ -1220,7 +1219,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "2.8";
+  FirmwareVer = "2.9";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
