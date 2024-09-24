@@ -1220,7 +1220,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "2.7";
+  FirmwareVer = "2.8";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1313,8 +1313,9 @@ void loop() {
   const unsigned long currentMillis = millis();
   const unsigned long time2send = periodSendTelemetry * 1000;
   if (currentMillis % time2send == 0){
-    reconnectMqtt();
+    //reconnectMqtt();
     composeJson();
+    delayMicroseconds(200000);
   }
   if (currentMillis % 10000 == 0){
     t3CallSendData();
