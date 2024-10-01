@@ -1006,7 +1006,7 @@ void heartBeat()
 
   // Return to high-Z
   pinMode(WDTPin, INPUT);
-  digitalWrite(WDTPin, HIGH);
+  //digitalWrite(WDTPin, HIGH);
 
 
   Serial.println("Heartbeat");
@@ -1215,7 +1215,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "3.2";
+  FirmwareVer = "3.3";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
