@@ -1013,6 +1013,7 @@ void heartBeat()
 
   // Return to high-Z
   pinMode(WDTPin, INPUT);
+  //  digitalWrite(WDTPin, HIGH);
 
   Serial.println("Heartbeat");
   // SerialBT.println("Heartbeat");
@@ -1220,7 +1221,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "3.6";
+  FirmwareVer = "3.7";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1328,15 +1329,18 @@ void loop() {
   }
   if (currentMillis % 500 == 0){
     t7showTime();
+    heartBeat();
   }
   if (currentMillis % 600000 == 0)
   {
     OTA_git_CALL();
   }
+  /*
   if (currentMillis % 120000 == 0)
   {
     heartBeat();
   }
+  */
   client.loop();
   
 }
