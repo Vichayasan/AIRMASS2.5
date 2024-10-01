@@ -1001,8 +1001,8 @@ Serial.println("Start Loop t4CallPrintPMS7003");
 void heartBeat()
 {
   //   Sink current to drain charge from watchdog circuit
-  pinMode(trigWDTPin, OUTPUT);
-  digitalWrite(trigWDTPin, LOW);
+  pinMode(WDTPin, OUTPUT);
+  digitalWrite(WDTPin, LOW);
 
   /*
   // Led monitor for Heartbeat
@@ -1012,7 +1012,7 @@ void heartBeat()
   */
 
   // Return to high-Z
-  pinMode(trigWDTPin, INPUT);
+  pinMode(WDTPin, INPUT);
 
   Serial.println("Heartbeat");
   // SerialBT.println("Heartbeat");
@@ -1220,7 +1220,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "3.5";
+  FirmwareVer = "3.6";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
