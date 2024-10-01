@@ -1004,10 +1004,12 @@ void heartBeat()
   pinMode(trigWDTPin, OUTPUT);
   digitalWrite(trigWDTPin, LOW);
 
+  /*
   // Led monitor for Heartbeat
   digitalWrite(ledHeartPIN, LOW);
   delay(100);
   digitalWrite(ledHeartPIN, HIGH);
+  */
 
   // Return to high-Z
   pinMode(trigWDTPin, INPUT);
@@ -1218,7 +1220,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "3.4";
+  FirmwareVer = "3.5";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
