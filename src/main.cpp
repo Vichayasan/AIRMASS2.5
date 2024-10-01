@@ -109,8 +109,8 @@ Task t8(time2send, TASK_FOREVER, &composeJson);
 #define TFT_SKYBLUE     0x867D      /* 135, 206, 235 */
 #define TFT_VIOLET      0x915C      /* 180,  46, 226 */
 
-#define WDTPin 4
-#define trigWDTPin 33
+#define WDTPin 33
+#define trigWDTPin 4
 #define ledHeartPIN 0
 #define swTFTPin 32
 
@@ -1215,7 +1215,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "3.1";
+  FirmwareVer = "3.2";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
