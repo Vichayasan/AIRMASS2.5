@@ -524,8 +524,8 @@ void enterDetailsCallback(Control *sender, int type) {
     Control* lineID_ = ESPUI.getControl(lineText);
     
     // Store control values
-    TempOffset = TempOffset_->value.toInt();
-    HumOffset1 = HumOffset1_->value.toInt();
+    TempOffset = TempOffset_->value.toInt() / 100;
+    HumOffset1 = HumOffset1_->value.toInt() / 100;
     pm01Offset = pm01Offset_->value.toInt();
     pm25Offset = pm25Offset_->value.toInt();
     pm10Offset = pm10Offset_->value.toInt();
@@ -928,10 +928,10 @@ void composeJson() {
   json.concat(deviceToken);
   json.concat("\",\"temp\":");
   //json.concat(String(25));
-  json.concat(temp + (TempOffset / 100));
+  json.concat(temp);
   json.concat(",\"hum\":");
   //json.concat(String(25));
-  json.concat(hum + (HumOffset1 / 100));
+  json.concat(hum);
   json.concat(",\"pres\":");
   //json.concat(String(25));
   json.concat(pres);
@@ -1064,11 +1064,11 @@ void t2CallShowEnv() {
 
     
     tft.drawString(title8, 250, 215, GFXFF); // Print the test text in the custom font
-    drawH(hum + (HumOffset1 / 100), 255, 195);
+    drawH(hum, 255, 195);
     tft.drawString("%", 312, 215, GFXFF);
 
     tft.drawString(title9, 250, 235, GFXFF); // Print the test text in the custom font
-    drawT(temp + (TempOffset / 100), 255, 215);
+    drawT(temp, 255, 215);
     tft.drawString("C", 312, 235, GFXFF);
 
     //Clear Stage
@@ -1221,7 +1221,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "3.7";
+  FirmwareVer = "3.8";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
