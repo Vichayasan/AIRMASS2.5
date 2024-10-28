@@ -1219,7 +1219,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "3.8";
+  FirmwareVer = "3.9";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
