@@ -1214,7 +1214,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "4.0";
+  FirmwareVer = "4.1";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1289,7 +1289,7 @@ void loop() {
     t2CallShowEnv();
   }
 
-  if (currentMillis % 20000 == 0){
+  if (currentMillis % 60000 == 0){
     heartBeat();
   }
   if (currentMillis % 500 == 0){
