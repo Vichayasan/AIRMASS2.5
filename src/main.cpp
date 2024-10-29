@@ -1000,20 +1000,15 @@ Serial.println("Start Loop t4CallPrintPMS7003");
 
 void heartBeat()
 {
-  //   Sink current to drain charge from watchdog circuit
-  pinMode(WDTPin, OUTPUT);
+
+  
+   //   Sink current to drain charge from watchdog circuit
+
   digitalWrite(WDTPin, LOW);
-
-  /*
-  // Led monitor for Heartbeat
-  digitalWrite(ledHeartPIN, LOW);
   delay(100);
-  digitalWrite(ledHeartPIN, HIGH);
-  */
-
-  // Return to high-Z
-  //pinMode(WDTPin, INPUT);
   digitalWrite(WDTPin, HIGH);
+ 
+ 
 
   Serial.println("Heartbeat");
   // SerialBT.println("Heartbeat");
@@ -1219,7 +1214,7 @@ void setup() {
   _initLCD();
   _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "3.9";
+  FirmwareVer = "4.0";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1231,7 +1226,7 @@ void setup() {
   if (!wifiManager.autoConnect(host.c_str())) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
-    //    ESP.reset();
+    // ESP.reset();
     
     delay(1000);
   }
@@ -1253,39 +1248,7 @@ void setup() {
   delay(200);
   
   readEEPROM();
-  /*
-  runner.init();
-  //  Serial.println("Initialized scheduler");
-
-  runner.addTask(t1);
-  //  Serial.println("added t1");
-  runner.addTask(t2);
-  //  Serial.println("added t2");
-  runner.addTask(t3);
-  //  Serial.println("added t3");
-  runner.addTask(t4);
-  //  Serial.println("added t4");
-  runner.addTask(t5);
-  //runner.addTask(t6);
-  runner.addTask(t7);
-  runner.addTask(t8);
-  delay(2000);
-
-  t1.enable();
-  //  Serial.println("Enabled t1");
-  t2.enable();
-  //  Serial.println("Enabled t2");
-  t3.enable();
-  //  Serial.println("Enabled t3");
-  t4.enable();
-  //  Serial.println("Enabled t2");
-  //t6.enable();
-  t5.enable();
-  t7.enable();
-  t8.enable();
-  //  t1CallgetProbe();
-  //  t2CallshowEnv() ;
-  */
+  pinMode(WDTPin, OUTPUT);
   
   for (int i = 0; i < 1000; i++);
   tft.fillScreen(TFT_BLACK);            // Clear screen
