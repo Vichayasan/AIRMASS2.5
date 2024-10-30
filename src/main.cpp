@@ -271,7 +271,8 @@ void splash() {
   tft.setFreeFont(FSB9);
   xpos = tft.width() / 2; // Half the screen width
   ypos = 150;
-  tft.drawString("AIRMASS2.5 version3.5", xpos, ypos + 25, GFXFF);  // Draw the text string in the selected GFX free font
+  String namePro = Project + "version" + FirmwareVer;
+  tft.drawString(namePro, xpos, ypos + 25, GFXFF);  // Draw the text string in the selected GFX free font
   //  tft.drawString("", xpos, ypos + 20, GFXFF); // Draw the text string in the selected GFX free font
   //  AISnb.debug = true;
   //  AISnb.setupDevice(serverPort);
@@ -1211,10 +1212,8 @@ void setup() {
   Serial.begin(115200);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   getMac();
-  _initLCD();
-  _initBME280();
   Project = "AIRMASS2.5";
-  FirmwareVer = "4.1";
+  FirmwareVer = "4.2";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1264,6 +1263,10 @@ void setup() {
   t3CallSendData();
   t4CallPrintPMS7003();
   t7showTime();
+  
+  _initLCD();
+  _initBME280();
+
 }
 
 // Variables to keep track of the last execution time for each task
@@ -1288,7 +1291,6 @@ void loop() {
     t1CallGetProbe();
     t2CallShowEnv();
   }
-
   if (currentMillis % 60000 == 0){
     heartBeat();
   }
