@@ -1213,7 +1213,7 @@ void setup() {
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   getMac();
   Project = "AIRMASS2.5";
-  FirmwareVer = "4.2";
+  FirmwareVer = "4.3";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1245,6 +1245,9 @@ void setup() {
   WiFi.softAP(host2.c_str());
   setUpUI(); //Start the GUI
   delay(200);
+
+  _initLCD();
+  _initBME280();
   
   readEEPROM();
   pinMode(WDTPin, OUTPUT);
@@ -1263,9 +1266,6 @@ void setup() {
   t3CallSendData();
   t4CallPrintPMS7003();
   t7showTime();
-  
-  _initLCD();
-  _initBME280();
 
 }
 
