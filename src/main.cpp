@@ -748,6 +748,7 @@ void reconnectMqtt()
   }else{
     mqttStatus = "Failed to Connect Server!";
     ESPUI.updateLabel(teleLog, String(mqttStatus));
+    ESP.restart();
   }
 }
 
@@ -1213,7 +1214,7 @@ void setup() {
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   getMac();
   Project = "AIRMASS2.5";
-  FirmwareVer = "4.3";
+  FirmwareVer = "4.4";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
