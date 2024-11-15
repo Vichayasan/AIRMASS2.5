@@ -1214,7 +1214,7 @@ void setup() {
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   getMac();
   Project = "AIRMASS2.5";
-  FirmwareVer = "4.4";
+  FirmwareVer = "4.5";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   
@@ -1240,12 +1240,6 @@ void setup() {
   Serial.print("Start..");
   tft.fillScreen(TFT_DARKCYAN);
   tft.drawString("Wait for WiFi Setting (Timeout 60 Sec)", tft.width() / 2, tft.height() / 2, GFXFF);
-  host2 = "AIS-IoT:" + deviceToken;
-  MDNS.begin(host2.c_str());
-  WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
-  WiFi.softAP(host2.c_str());
-  setUpUI(); //Start the GUI
-  delay(200);
 
   _initLCD();
   _initBME280();
@@ -1267,7 +1261,13 @@ void setup() {
   t3CallSendData();
   t4CallPrintPMS7003();
   t7showTime();
+  delay(200);
 
+  host2 = "AIS-IoT:" + deviceToken;
+  MDNS.begin(host2.c_str());
+  WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
+  WiFi.softAP(host2.c_str());
+  setUpUI(); //Start the GUI
 }
 
 // Variables to keep track of the last execution time for each task
