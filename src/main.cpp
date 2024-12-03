@@ -42,6 +42,9 @@
 #include "wifilogo.h"
 #include <time.h>
 #include "Free_Fonts.h"
+
+TaskHandle_t Task1;
+
 struct tm tmstruct;
 struct tm timeinfo;
 
@@ -1209,14 +1212,29 @@ void getMac()
   ESPUI.updateLabel(idLabel, String(deviceToken));
 }
 
+void Task1code(void *pvParameters)
+{
+
+  for (;;)
+  {
+    //    Serial.print("Task1 running on core ");
+    //    Serial.println(xPortGetCoreID());
+    heartBeat();
+    vTaskDelay((120000) / portTICK_PERIOD_MS);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
+  xTaskCreate(Task1code, "Task1", 10000, NULL, tskIDLE_PRIORITY, NULL);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
-  getMac();
+  
   Project = "AIRMASS2.5";
-  FirmwareVer = "4.5";
+  FirmwareVer = "4.7";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
+  getMac();
+  
   
   Serial.println();
   Serial.println(F("***********************************"));
@@ -1237,12 +1255,19 @@ void setup() {
   client.setServer( thingsboardServer, PORT );
   //  client.setCallback(callback);
   reconnectMqtt();
+  
   Serial.print("Start..");
   tft.fillScreen(TFT_DARKCYAN);
   tft.drawString("Wait for WiFi Setting (Timeout 60 Sec)", tft.width() / 2, tft.height() / 2, GFXFF);
-
+  //delay(200);
+  host2 = "AIS-IoT:" + deviceToken;
+  MDNS.begin(host2.c_str());
+  WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
+  WiFi.softAP(host2.c_str());
   _initLCD();
   _initBME280();
+
+  setUpUI(); //Start the GUI
   
   readEEPROM();
   pinMode(WDTPin, OUTPUT);
@@ -1261,13 +1286,7 @@ void setup() {
   t3CallSendData();
   t4CallPrintPMS7003();
   t7showTime();
-  delay(200);
 
-  host2 = "AIS-IoT:" + deviceToken;
-  MDNS.begin(host2.c_str());
-  WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
-  WiFi.softAP(host2.c_str());
-  setUpUI(); //Start the GUI
 }
 
 // Variables to keep track of the last execution time for each task
@@ -1293,7 +1312,7 @@ void loop() {
     t2CallShowEnv();
   }
   if (currentMillis % 60000 == 0){
-    heartBeat();
+    //heartBeat();
   }
   if (currentMillis % 500 == 0){
     t7showTime();
