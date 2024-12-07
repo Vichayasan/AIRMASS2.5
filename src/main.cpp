@@ -801,7 +801,7 @@ void t1CallGetProbe() {
   }
 
 
-
+  _initBME280();
   printBME280Data();
   //getDataSGP30();
 }
@@ -1226,15 +1226,20 @@ void Task1code(void *pvParameters)
 
 void setup() {
   Serial.begin(115200);
+ 
+  pinMode(WDTPin, OUTPUT);
   xTaskCreate(Task1code, "Task1", 10000, NULL, tskIDLE_PRIORITY, NULL);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   
   Project = "AIRMASS2.5";
-  FirmwareVer = "4.7";
+  FirmwareVer = "4.8";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   getMac();
   
+  _initLCD();
+  _initBME280();
+  delay(1);
   
   Serial.println();
   Serial.println(F("***********************************"));
@@ -1248,6 +1253,9 @@ void setup() {
     
     delay(1000);
   }
+  delay(1);
+  
+
   configTime(3600 * timezone, daysavetime * 3600, "0.pool.ntp.org", "1.pool.ntp.org", "time.nist.gov");
  
 
@@ -1255,22 +1263,21 @@ void setup() {
   client.setServer( thingsboardServer, PORT );
   //  client.setCallback(callback);
   reconnectMqtt();
+  delay(1);
   
   Serial.print("Start..");
   tft.fillScreen(TFT_DARKCYAN);
   tft.drawString("Wait for WiFi Setting (Timeout 60 Sec)", tft.width() / 2, tft.height() / 2, GFXFF);
-  //delay(200);
+  delay(200);
+  
+  readEEPROM();
   host2 = "AIS-IoT:" + deviceToken;
   MDNS.begin(host2.c_str());
   WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
   WiFi.softAP(host2.c_str());
-  _initLCD();
-  _initBME280();
 
   setUpUI(); //Start the GUI
   
-  readEEPROM();
-  pinMode(WDTPin, OUTPUT);
   
   for (int i = 0; i < 1000; i++);
   tft.fillScreen(TFT_BLACK);            // Clear screen
@@ -1286,6 +1293,8 @@ void setup() {
   t3CallSendData();
   t4CallPrintPMS7003();
   t7showTime();
+
+  
 
 }
 
