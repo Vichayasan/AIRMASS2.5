@@ -26,10 +26,12 @@
 #include <ESPmDNS.h>
 
 #include <TaskScheduler.h>
+// #include <HTTPClientESP32.h>
 #include <http_ota.h>
 
-//#include "Adafruit_SGP30.h"
+// #include "Adafruit_SGP30.h"
 #include <Adafruit_MLX90614.h>
+#include <SparkFun_SGP30_Arduino_Library.h>
 
 #include "LogoAIS.h"
 #include "lv1.h"
@@ -72,6 +74,7 @@ void t6OTA();
 void t7showTime();
 
 int periodSendTelemetry = 60;  //the value is a number of seconds
+int periodOTA = 60;
 
 /*
 // Variables to keep track of the last execution time for each task
@@ -122,15 +125,16 @@ Task t8(time2send, TASK_FOREVER, &composeJson);
 
 HardwareSerial hwSerial(2);
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
-//Adafruit_SGP30 sgp;
+// Adafruit_SGP30 sgp;
+SGP30 sgp;
 BME280 bme;
 
-uint32_t getAbsoluteHumidity(float temperature, float humidity) {
-  // approximation formula from Sensirion SGP30 Driver Integration chapter 3.15
-  const float absoluteHumidity = 216.7f * ((humidity / 100.0f) * 6.112f * exp((17.62f * temperature) / (243.12f + temperature)) / (273.15f + temperature)); // [g/m^3]
-  const uint32_t absoluteHumidityScaled = static_cast<uint32_t>(1000.0f * absoluteHumidity); // [mg/m^3]
-  return absoluteHumidityScaled;
-}
+// uint32_t getAbsoluteHumidity(float temperature, float humidity) {
+//   // approximation formula from Sensirion SGP30 Driver Integration chapter 3.15
+//   const float absoluteHumidity = 216.7f * ((humidity / 100.0f) * 6.112f * exp((17.62f * temperature) / (243.12f + temperature)) / (273.15f + temperature)); // [g/m^3]
+//   const uint32_t absoluteHumidityScaled = static_cast<uint32_t>(1000.0f * absoluteHumidity); // [mg/m^3]
+//   return absoluteHumidityScaled;
+// }
 
 #define WIFI_AP ""
 #define WIFI_PASSWORD ""
@@ -149,7 +153,7 @@ String host2 = "";
 #define title2 "PM1"
 #define title3 "PM10"
 #define title4 "CO2"
-#define title5 "VOC"
+#define title5 "TVOC"
 #define title6 "Update"
 #define title7 "ug/m3"
 #define title8 "RH"
@@ -199,7 +203,7 @@ uint16_t nameLabel, idLabel, cuationlabel, firmwarelabel, mainSwitcher, mainSlid
 //  uint16_t styleButton, styleLabel, styleSwitcher, styleSlider, styleButton2, styleLabel2, styleSlider2;
 uint16_t tempText, humText, humText2, saveConfigButton, interval ,emailText1;
 uint16_t pm01Text, pm25Text, pm10Text, pn03Text, pn05Text, pn10Text, pn25Text, pn50Text, pn100Text, lineText;
-uint16_t bmeLog, wifiLog, teleLog;
+uint16_t bmeLog, wifiLog, teleLog, otaConfig;
 
 uint16_t graph;
 volatile bool updates = false;
@@ -252,6 +256,8 @@ struct pms7003data {
   uint16_t particles_03um, particles_05um, particles_10um, particles_25um, particles_50um, particles_100um;
   uint16_t unused;
   uint16_t checksum;
+  uint16_t TVOC = 0;
+  uint16_t eCO2 = 0;
 };
 
 struct pms7003data data;
@@ -274,7 +280,7 @@ void splash() {
   tft.setFreeFont(FSB9);
   xpos = tft.width() / 2; // Half the screen width
   ypos = 150;
-  String namePro = Project + "version" + FirmwareVer;
+  String namePro = Project + "\tversion:\t" + FirmwareVer;
   tft.drawString(namePro, xpos, ypos + 25, GFXFF);  // Draw the text string in the selected GFX free font
   //  tft.drawString("", xpos, ypos + 20, GFXFF); // Draw the text string in the selected GFX free font
   //  AISnb.debug = true;
@@ -423,9 +429,21 @@ void printBME280Data()
   Serial.println("DebugprintEndBME280Data");
 }
 
+struct tcp_pcb;
+extern struct tcp_pcb* tcp_tw_pcbs;
+extern "C" void tcp_abort(struct tcp_pcb* pcb);
+
+void tcpCleanup(void) {
+  // Serial.println("Debug TCPclean()");
+    while (tcp_tw_pcbs) {
+        tcp_abort(tcp_tw_pcbs);
+    }
+}
+
 // This is the main function which builds our GUI
 // This is the main function which builds our GUI
 void setUpUI() {
+  tcpCleanup();
 
   //Turn off verbose  ging
   ESPUI.setVerbosity(Verbosity::Quiet);
@@ -468,7 +486,8 @@ void setUpUI() {
   
   
   ESPUI.addControl(Separator, "Interval Configuration", "", None, settingTab);
-  interval = ESPUI.addControl(Number, "Interval (second)", String(periodSendTelemetry), Emerald, settingTab, enterDetailsCallback);
+  interval = ESPUI.addControl(Number, "Telemetry Interval (second)", String(periodSendTelemetry), Emerald, settingTab, enterDetailsCallback);
+  otaConfig = ESPUI.addControl(Number, "OTA Interval (second)", String(periodOTA), Emerald, settingTab, enterDetailsCallback);
   
   /*
   ESPUI.addControl(Separator, "", "", None, settingTab);
@@ -542,6 +561,7 @@ void enterDetailsCallback(Control *sender, int type) {
     //  CO2Offset = CO2Offset_->value.toInt();
     //  VOCOffset = VOCOffset_->value.toInt();
     periodSendTelemetry = periodSendTelemetry_->value.toInt();
+    periodOTA = ESPUI.getControl(otaConfig)->value.toInt();
     email1 = email1_->value;
     lineID = lineID_->value;
     char data1[40];
@@ -591,13 +611,15 @@ void enterDetailsCallback(Control *sender, int type) {
     addr += sizeof(VOCOffset);
     */
     EEPROM.put(addr, periodSendTelemetry);
-    //  addr += sizeof(periodSendTelemetry);
-    addr = 70;
+    addr += sizeof(periodSendTelemetry);
+    
+    EEPROM.put(addr, periodOTA);
+    addr += sizeof(periodOTA);
+
     for (int len = 0; len < email1.length(); len++) {
       EEPROM.write(addr + len, data1[len]);  // Write each character
     }
     EEPROM.write(addr + email1.length(), '\0');  // Add null terminator at the end
-    addr = 110;
     for (int len = 0; len < lineID.length(); len++) {
       EEPROM.write(addr + len, data2[len]);  // Write each character
     }
@@ -669,19 +691,25 @@ void readEEPROM() {
     addr += sizeof(VOCOffset);
     */
     EEPROM.get(addr, periodSendTelemetry);
-    //  addr += sizeof(periodSendTelemetry);
-    addr = 70;
+    addr += sizeof(periodSendTelemetry);
+
+    EEPROM.get(addr, periodOTA);
+    addr += sizeof(periodOTA);
+    
     for (int len = 0; len < 50; len++){
       char data1 = EEPROM.read(addr + len);
-      if(data1 == '\0' || data1 == 255) break;
+      if (data1 == '\0' || data1 == (char)255 || data1 == (char)20){
+        break;// Skip unwanted characters
+      } 
       email1 += data1;
     }
-    //  addr += sizeof(email1);
-    addr = 110;
+    addr += sizeof(email1);
     for (int len = 0; len < 50; len++){
-      char data2 = EEPROM.read(addr + len);
-      if(data2 == '\0' || data2 == 255) break;
-      lineID += data2;
+      char data1 = EEPROM.read(addr + len);
+      if (data1 == '\0' || data1 == (char)255 || data1 == (char)20){
+        break;// Skip unwanted characters
+      } 
+      lineID += data1;
     }
     /*
     addr = 140;
@@ -698,16 +726,6 @@ void readEEPROM() {
   Serial.println("get periodSendTelemetry: " + String(periodSendTelemetry));
   Serial.println("get outputEmail1: " + String(email1));
 
-  pm01Offset = 0;
-  pm25Offset = 0;
-  pm10Offset = 0;
-  pn03Offset = 0;
-  pn05Offset = 0;
-  pn10Offset = 0;
-  pn25Offset = 0;
-  pn50Offset = 0;
-  pn100Offset = 0;
-
   ESPUI.updateNumber(tempText, TempOffset);
   ESPUI.updateNumber(humText, HumOffset1);
   ESPUI.updateNumber(interval, periodSendTelemetry);
@@ -720,7 +738,7 @@ void readEEPROM() {
   ESPUI.updateNumber(pn25Text, pn25Offset);
   ESPUI.updateNumber(pn50Text, pn50Offset);
   ESPUI.updateNumber(pn100Text, pn100Offset);
-  //  ESPUI.updateNumber(CO2Text, CO2Offset);
+  ESPUI.updateNumber(otaConfig, periodOTA);
   //  ESPUI.updateNumber(VOCText, VOCOffset);
   ESPUI.updateText(emailText1, String(email1));
   ESPUI.updateText(lineText, String(lineID));
@@ -772,7 +790,18 @@ void sendAttribute(){
   processAtt(char_array);
 }
 
-
+void getDataSGP30() {
+  //First fifteen readings will be
+  //CO2: 400 ppm  TVOC: 0 ppb
+  delay(1000); //Wait 1 second
+  //measure CO2 and TVOC levels
+  sgp.measureAirQuality();
+  Serial.print("CO2: ");
+  Serial.print(sgp.CO2);
+  Serial.print(" ppm\tTVOC: ");
+  Serial.print(sgp.TVOC);
+  Serial.println(" ppb");
+}
 
 void t1CallGetProbe() {
 
@@ -803,7 +832,7 @@ void t1CallGetProbe() {
 
   _initBME280();
   printBME280Data();
-  //getDataSGP30();
+  getDataSGP30();
 }
 
 void drawPM2_5(int num, int x, int y)
@@ -887,6 +916,30 @@ void drawPM10(int num, int x, int y)
   stringPM10.deleteSprite();
 }
 
+void drawCO2(int num, int x, int y)
+{
+  stringCO2.createSprite(60, 20);
+  //  stringCO2.fillSprite(TFT_GREEN);
+  stringCO2.setFreeFont(FSB9);
+  stringCO2.setTextColor(TFT_WHITE);
+  stringCO2.setTextSize(1);
+  stringCO2.drawNumber(num, 0, 3);
+  stringCO2.pushSprite(x, y);
+  stringCO2.deleteSprite();
+}
+
+void drawVOC(int num, int x, int y)
+{
+  stringVOC.createSprite(60, 20);
+  //  stringVOC.fillSprite(TFT_GREEN);
+  stringVOC.setFreeFont(FSB9);
+  stringVOC.setTextColor(TFT_WHITE);
+  stringVOC.setTextSize(1);
+  stringVOC.drawNumber(num, 0, 3);
+  stringVOC.pushSprite(x, y);
+  stringVOC.deleteSprite();
+}
+
 void t3CallSendData() {
   Serial.println("Startt3CallSendData()");
   digitalWrite(12, HIGH);
@@ -959,10 +1012,9 @@ void composeJson() {
   json.concat(data.particles_50um + (pn50Offset / 100));
   json.concat(",\"pn100\":");
   json.concat(data.particles_100um + (pn100Offset / 100));
-  
-  json.concat(",\"project\":\"AIRMASS2.5\"");
-  json.concat(",\"v\":\"3.1\"");
-  json.concat("}");
+  json.concat(",\"v\":\"");
+  json.concat(FirmwareVer);
+  json.concat("\"}");
   Serial.println(json);
   //SerialBT.println(json);
   ////SerialBT.println(json);
@@ -1060,7 +1112,12 @@ void t2CallShowEnv() {
     drawPM10(data.pm100_env + (pm10Offset / 100), 55, 195);
     tft.drawString(title3, 100, 235, GFXFF); // Print the test text in the custom font
 
-    
+    drawCO2((sgp.CO2), 115, 195);
+    tft.drawString(title4, 150, 235, GFXFF); // Print the test text in the custom font
+
+    drawVOC((sgp.TVOC), 160, 195);
+    tft.drawString(title5, 210, 235, GFXFF); // Print the test text in the custom font
+
     tft.drawString(title8, 250, 215, GFXFF); // Print the test text in the custom font
     drawH(hum + (HumOffset1 / 100), 255, 195);
     tft.drawString("%", 312, 215, GFXFF);
@@ -1209,6 +1266,7 @@ void getMac()
     }
     deviceToken += String(mac[i], HEX); // Convert byte to hex
   }
+  deviceToken.toUpperCase();
   ESPUI.updateLabel(idLabel, String(deviceToken));
 }
 
@@ -1224,6 +1282,27 @@ void Task1code(void *pvParameters)
   }
 }
 
+void _initSGP30 () {
+  //Initialize sensor
+  if (sgp.begin() == false) {
+    Serial.println("No SGP30 Detected. Check connections.");
+    while (1);
+  }
+  //Initializes sensor for air quality readings
+  //measureAirQuality should be called in one second increments after a call to initAirQuality
+  sgp.initAirQuality();
+  Serial.print("Found SGP30 serial #");
+  sgp.getSerialID();
+  //Get version number
+  sgp.getFeatureSetVersion();
+  Serial.print("SerialID: 0x");
+  Serial.print((unsigned long)sgp.serialID, HEX);
+  Serial.print("\tFeature Set Version: 0x");
+  Serial.println(sgp.featureSetVersion, HEX);
+
+
+}
+
 void setup() {
   Serial.begin(115200);
  
@@ -1232,19 +1311,20 @@ void setup() {
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   
   Project = "AIRMASS2.5";
-  FirmwareVer = "4.8";
+  FirmwareVer = "0.0.7";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   getMac();
   
   _initLCD();
   _initBME280();
+  _initSGP30();
   delay(1);
   
   Serial.println();
   Serial.println(F("***********************************"));
   //wifiManager.resetSettings();
-  String host = "SmartEnv:" + deviceToken;
+  String host = "SmartEnv-WM-" + deviceToken;
   wifiManager.setAPCallback(configModeCallback);
   if (!wifiManager.autoConnect(host.c_str())) {
     Serial.println("failed to connect and hit timeout");
@@ -1265,13 +1345,13 @@ void setup() {
   reconnectMqtt();
   delay(1);
   
-  Serial.print("Start..");
-  tft.fillScreen(TFT_DARKCYAN);
-  tft.drawString("Wait for WiFi Setting (Timeout 60 Sec)", tft.width() / 2, tft.height() / 2, GFXFF);
-  delay(200);
+  // Serial.print("Start..");
+  // tft.fillScreen(TFT_DARKCYAN);
+  // tft.drawString("Wait for WiFi Setting (Timeout 60 Sec)", tft.width() / 2, tft.height() / 2, GFXFF);
+  // delay(200);
   
   readEEPROM();
-  host2 = "AIS-IoT:" + deviceToken;
+  host2 = "SmartEnv-UI-:" + deviceToken;
   MDNS.begin(host2.c_str());
   WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
   WiFi.softAP(host2.c_str());
@@ -1305,29 +1385,40 @@ void loop() {
   //runner.execute();
   
   const unsigned long currentMillis = millis();
-  const unsigned long time2send = periodSendTelemetry * 1000;
-  if (currentMillis % time2send == 0){
+  static unsigned long time2send = 0;
+  static unsigned long pv1 = 0;
+  static unsigned long pv2 = 0;
+  static unsigned long pv3 = 0;
+  static unsigned long pv4 = 0;
+  if (currentMillis - time2send >= periodSendTelemetry * 1000){
+    time2send = currentMillis;
     if (!client.connected())
     {
       reconnectMqtt();
     }
     composeJson();
-    delayMicroseconds(200000);
   }
-  if (currentMillis % 10000 == 0){
+
+  if (currentMillis - pv1 >= 10000){
+    pv1 = currentMillis;
     t3CallSendData();
     t4CallPrintPMS7003();
     t1CallGetProbe();
     t2CallShowEnv();
   }
-  if (currentMillis % 60000 == 0){
-    //heartBeat();
-  }
-  if (currentMillis % 500 == 0){
+
+  // if (currentMillis % 60000 == 0){
+  //   //heartBeat();
+  // }
+
+  if (currentMillis - pv2 >= 500){
+    pv2 = currentMillis;
     t7showTime();
   }
-  if (currentMillis % 600000 == 0)
+
+  if (currentMillis - pv3 >= periodOTA * 1000)
   {
+    pv3 = currentMillis;
     OTA_git_CALL();
   }
   /*
