@@ -65,6 +65,7 @@ void sendAttribute();
 void processAtt(char jsonAtt[]);
 void reconnectMqtt();
 void heartBeat();
+void enterRSTCallback(Control *sender, int type);
 
 void t1CallGetProbe();
 void t2CallShowEnv();
@@ -203,12 +204,17 @@ uint16_t nameLabel, idLabel, cuationlabel, firmwarelabel, mainSwitcher, mainSlid
 //  uint16_t styleButton, styleLabel, styleSwitcher, styleSlider, styleButton2, styleLabel2, styleSlider2;
 uint16_t tempText, humText, humText2, saveConfigButton, interval ,emailText1;
 uint16_t pm01Text, pm25Text, pm10Text, pn03Text, pn05Text, pn10Text, pn25Text, pn50Text, pn100Text, lineText;
-uint16_t bmeLog, wifiLog, teleLog, otaConfig;
+uint16_t bmeLog, wifiLog, teleLog, otaConfig, resWiFi, HrSl, MinSl, HrWake, MinWake;
 
 uint16_t graph;
 volatile bool updates = false;
 String email1 = "";
 String lineID = "";
+String passCode;
+int hrSlSet;
+int minSlSet;
+int hrWKSet;
+int minWKSet;
 
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
@@ -280,7 +286,7 @@ void splash() {
   tft.setFreeFont(FSB9);
   xpos = tft.width() / 2; // Half the screen width
   ypos = 150;
-  String namePro = Project + "\tversion:\t" + FirmwareVer;
+  String namePro = Project;
   tft.drawString(namePro, xpos, ypos + 25, GFXFF);  // Draw the text string in the selected GFX free font
   //  tft.drawString("", xpos, ypos + 20, GFXFF); // Draw the text string in the selected GFX free font
   //  AISnb.debug = true;
@@ -296,6 +302,7 @@ void splash() {
   tft.setTextColor(TFT_WHITE);
   tft.setFreeFont(FSB9);
   tft.drawString(nccidStr, xpos, ypos + 45, GFXFF);
+  tft.drawString("V " + FirmwareVer, 312, 235, GFXFF);
   delay(5000);
 
   tft.setTextFont(GLCD);
@@ -514,6 +521,20 @@ void setUpUI() {
   ESPUI.addControl(Separator, "Error Log", "", None, eventTab);
   teleLog = ESPUI.addControl(Label, "Server Connection Status", String(mqttStatus), Alizarin, eventTab, enterDetailsCallback);
   bmeLog = ESPUI.addControl(Label, "Sensor Connection Status", String(bmeStatus), Alizarin, eventTab, enterDetailsCallback);
+
+  auto connect = ESPUI.addControl(Tab, "", "Connection");
+  resWiFi = ESPUI.addControl(Text, "Restart WiFi", String(passCode), Alizarin, connect, enterRSTCallback);
+  ESPUI.addControl(Button, "RESTART", "RST", Peterriver, connect, enterRSTCallback);
+
+  auto timer = ESPUI.addControl(Tab, "", "Timer");
+  ESPUI.addControl(Separator, "Screen Sleep", "", None, timer);
+  HrSl = ESPUI.addControl(Number, "Hour Set Point", String(hrSlSet), Alizarin, timer, enterDetailsCallback);
+  MinSl = ESPUI.addControl(Number, "Minute Set Point", String(minSlSet), Alizarin, timer, enterDetailsCallback);
+  ESPUI.addControl(Separator, "Screen Wake Up", "", None, timer);
+  HrWake = ESPUI.addControl(Number, "Hour Set Point", String(hrWKSet), Alizarin, timer, enterDetailsCallback);
+  MinWake = ESPUI.addControl(Number, "Minute Set Point", String(minWKSet), Alizarin, timer, enterDetailsCallback);
+  ESPUI.addControl(Button, "", "SAVE", Peterriver, timer, enterDetailsCallback);
+
   host2 = "AIS-IoT:" + deviceToken;
   //Finally, start up the UI.
   //This should only be called once we are connected to WiFi.
@@ -562,6 +583,17 @@ void enterDetailsCallback(Control *sender, int type) {
     //  VOCOffset = VOCOffset_->value.toInt();
     periodSendTelemetry = periodSendTelemetry_->value.toInt();
     periodOTA = ESPUI.getControl(otaConfig)->value.toInt();
+
+    Serial.println("debug 1");
+    hrSlSet = ESPUI.getControl(HrSl)->value.toInt();
+    Serial.println("debug 1.1");
+    minSlSet = ESPUI.getControl(MinSl)->value.toInt();
+    Serial.println("debug 1.2");
+    hrWKSet = ESPUI.getControl(HrWake)->value.toInt();
+    Serial.println("debug 1.3");
+    minWKSet = ESPUI.getControl(MinWake)->value.toInt();
+    Serial.println("debug 2");
+
     email1 = email1_->value;
     lineID = lineID_->value;
     char data1[40];
@@ -615,6 +647,21 @@ void enterDetailsCallback(Control *sender, int type) {
     
     EEPROM.put(addr, periodOTA);
     addr += sizeof(periodOTA);
+    Serial.println("debug 3");
+
+    EEPROM.put(addr, hrSlSet);
+    addr += sizeof(hrSlSet);
+
+    EEPROM.put(addr, minSlSet);
+    addr += sizeof(minSlSet);
+
+    EEPROM.put(addr, hrWKSet);
+    addr += sizeof(hrWKSet);
+
+    EEPROM.put(addr, minWKSet);
+    addr += sizeof(minWKSet);
+
+    Serial.println("debug 4");
 
     for (int len = 0; len < email1.length(); len++) {
       EEPROM.write(addr + len, data1[len]);  // Write each character
@@ -644,6 +691,28 @@ void enterDetailsCallback(Control *sender, int type) {
   */
     EEPROM.end();
     sendAttribute(); // Assuming this function is required to send attributes
+  }
+}
+
+void enterRSTCallback(Control *sender, int type){
+  Serial.println("debug 2");
+  Serial.println(sender->value);
+  // ESPUI.updateControl(sender);
+  Control* _rst = ESPUI.getControl(resWiFi);
+  passCode = _rst->value.c_str();
+
+  if (type == B_UP) { // Only trigger on button release
+    if (passCode.equals("systemctl restart networking")) {  
+      Serial.println("Restarting WiFi...");
+      
+      // Reset WiFi credentials
+      wifiManager.resetSettings();  
+      
+      // Restart ESP
+      ESP.restart();  
+    } else {
+      Serial.println("Invalid command received.");
+    }
   }
 }
 
@@ -695,6 +764,18 @@ void readEEPROM() {
 
     EEPROM.get(addr, periodOTA);
     addr += sizeof(periodOTA);
+
+    EEPROM.get(addr, hrSlSet);
+    addr += sizeof(hrSlSet);
+
+    EEPROM.get(addr, minSlSet);
+    addr += sizeof(minSlSet);
+
+    EEPROM.get(addr, hrWKSet);
+    addr += sizeof(hrWKSet);
+
+    EEPROM.get(addr, minWKSet);
+    addr += sizeof(minWKSet);
     
     for (int len = 0; len < 50; len++){
       char data1 = EEPROM.read(addr + len);
@@ -739,6 +820,11 @@ void readEEPROM() {
   ESPUI.updateNumber(pn50Text, pn50Offset);
   ESPUI.updateNumber(pn100Text, pn100Offset);
   ESPUI.updateNumber(otaConfig, periodOTA);
+  ESPUI.updateNumber(HrSl, hrSlSet);
+  ESPUI.updateNumber(MinSl, minSlSet);
+  ESPUI.updateNumber(HrWake, hrWKSet);
+  ESPUI.updateNumber(MinWake, minWKSet);
+
   //  ESPUI.updateNumber(VOCText, VOCOffset);
   ESPUI.updateText(emailText1, String(email1));
   ESPUI.updateText(lineText, String(lineID));
@@ -1197,6 +1283,25 @@ void t7showTime() {
     }
   }
 
+  if (tmstruct.tm_hour == hrSlSet && tmstruct.tm_min == minSlSet){
+    Serial.println();
+    Serial.println("Trun On Black light");
+    Serial.printf("Hr: %d, Min: %d \n", tmstruct.tm_hour, tmstruct.tm_min);
+    Serial.println();
+
+    digitalWrite(swTFTPin, HIGH);
+    
+  }else if (tmstruct.tm_hour == hrWKSet && tmstruct.tm_min == minWKSet)
+  {
+    Serial.println();
+    Serial.println("Trun Off Black light");
+    Serial.printf("Hr: %d, Min: %d \n", tmstruct.tm_hour, tmstruct.tm_min);
+    Serial.println();
+
+    digitalWrite(swTFTPin, LOW);
+  }
+  
+
   topNumber.drawString(timeS, 5, 10, GFXFF);
 
   topNumber.pushSprite(5, 5);
@@ -1303,15 +1408,27 @@ void _initSGP30 () {
 
 }
 
+void TFTsize(){
+   // Print the dimensions
+   Serial.print("TFT Width: ");
+   Serial.print(tft.width());
+   Serial.println(" pixels");
+   
+   Serial.print("TFT Height: ");
+   Serial.print(tft.height());
+   Serial.println(" pixels");
+}
+
 void setup() {
   Serial.begin(115200);
  
   pinMode(WDTPin, OUTPUT);
+  pinMode(swTFTPin, OUTPUT);
   xTaskCreate(Task1code, "Task1", 10000, NULL, tskIDLE_PRIORITY, NULL);
   hwSerial.begin(9600, SERIAL_8N1, SERIAL1_RXPIN, SERIAL1_TXPIN);
   
   Project = "AIRMASS2.5";
-  FirmwareVer = "0.0.7";
+  FirmwareVer = "0.0.9";
   Serial.println(F("Starting... SHT20 TEMP/HUM_RS485 Monitor"));
   // communicate with Modbus slave ID 1 over Serial (port 2)
   getMac();
@@ -1326,6 +1443,9 @@ void setup() {
   //wifiManager.resetSettings();
   String host = "SmartEnv-WM-" + deviceToken;
   wifiManager.setAPCallback(configModeCallback);
+  wifiManager.setConfigPortalTimeout(60); // auto close configportal after n seconds
+  wifiManager.setAPClientCheck(true);     // avoid timeout if client connected to softap
+  wifiManager.setBreakAfterConfig(true);  // always exit configportal even if wifi save fails
   if (!wifiManager.autoConnect(host.c_str())) {
     Serial.println("failed to connect and hit timeout");
     //reset and try again, or maybe put it to deep sleep
@@ -1337,7 +1457,8 @@ void setup() {
   
 
   configTime(3600 * timezone, daysavetime * 3600, "0.pool.ntp.org", "1.pool.ntp.org", "time.nist.gov");
- 
+
+  TFTsize();
 
   //  wifiClient.setFingerprint(fingerprint);
   client.setServer( thingsboardServer, PORT );
